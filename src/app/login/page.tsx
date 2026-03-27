@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { GraduationCap, AlertCircle } from "lucide-react";
+import { GraduationCap, AlertCircle, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -29,86 +29,108 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 font-body">
+    <div className="flex h-screen bg-white" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* Left Panel */}
-      <div className="hidden lg:flex w-1/2 bg-primary items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary to-blue-900 opacity-90" />
-        <div className="relative z-10 text-center text-white max-w-lg">
-          <div className="mx-auto w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-8 backdrop-blur-sm">
-            <GraduationCap size={48} className="text-white" />
-          </div>
-          <h1 className="text-4xl font-bold font-heading mb-4">SIGTA</h1>
-          <p className="text-xl opacity-90 font-light">
-            Sistema Inteligente de Gestión de Tutorías Académicas
-          </p>
-          <div className="mt-12 text-sm opacity-70">
-            Universidad Pedagógica y Tecnológica de Colombia
+      <div
+        className="hidden lg:flex flex-1 relative overflow-hidden flex-col justify-end p-9"
+        style={{ backgroundColor: "#1a1a22" }}
+      >
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            background:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%231a1a22'/%3E%3Cline x1='0' y1='30' x2='60' y2='30' stroke='%23ffffff07' stroke-width='0.5'/%3E%3Cline x1='30' y1='0' x2='30' y2='60' stroke='%23ffffff07' stroke-width='0.5'/%3E%3C/svg%3E\")",
+          }}
+        />
+        <div className="absolute inset-0 z-0" style={{ background: "linear-gradient(180deg, transparent 40%, #1a1a22dd 100%)" }} />
+
+        <div className="absolute top-7 left-9 z-10 text-white">
+          <div className="flex items-center gap-3">
+            <div className="h-[34px] w-[34px] rounded-[9px] bg-[#FFC100] flex items-center justify-center">
+              <Layers className="h-[18px] w-[18px] text-[#0F2547]" />
+              <GraduationCap className="hidden" />
+            </div>
+            <div>
+              <h1 className="text-[14px] font-bold leading-none text-white">SIGTA</h1>
+              <p className="mt-1 text-[10px] text-white/35">UPTC · Sistema de Tutorías</p>
+            </div>
           </div>
         </div>
-        {/* Abstract shapes */}
-        <div className="absolute -top-20 -left-20 w-64 h-64 bg-accent/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl" />
+
+        <div className="relative z-10 text-white">
+          <div className="inline-flex items-center gap-2 rounded-[20px] border border-[rgba(255,193,0,0.25)] bg-[rgba(255,193,0,0.12)] px-3 py-[5px]">
+            <span className="h-[6px] w-[6px] rounded-full bg-[#FFC100]" />
+            <span className="text-[11px] font-bold tracking-[0.5px] uppercase text-[#FFC100]">PLATAFORMA ACADÉMICA</span>
+          </div>
+          <p className="mt-5 text-[30px] font-bold leading-[1.2] tracking-[-0.5px] text-white max-w-[380px]">
+            Sistema Inteligente de Gestión de <span className="text-[#FFC100]">Tutorías</span> Académicas
+          </p>
+          <p className="mt-[10px] max-w-[340px] text-[13px] leading-[1.75] text-[rgba(255,255,255,0.45)]">
+            Conecta estudiantes con tutores de la UPTC. Agenda sesiones, lleva el seguimiento y mejora tu rendimiento académico.
+          </p>
+        </div>
       </div>
 
       {/* Right Panel */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-gray-900 font-heading">
+      <div className="w-full lg:w-[400px] bg-white px-[44px] py-12 flex flex-col justify-center">
+        <div className="w-full">
+          <div className="mb-8 text-left">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.8px] text-[#FFC100]">ACCESO INSTITUCIONAL</p>
+            <h2 className="text-[26px] font-bold tracking-[-0.4px] text-[#0F2547]">
               Bienvenido de nuevo
             </h2>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-[13px] text-[#6B7280]">
               Ingresa tus credenciales institucionales para continuar.
             </p>
           </div>
 
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
+          <form className="mt-0" onSubmit={handleSubmit}>
+            <div>
+              <div className="mb-[18px]">
+                <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">
                   Correo Institucional
                 </label>
-                <div className="mt-1">
+                <div>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="usuario@uptc.edu.co"
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm transition-colors"
+                    className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
+              <div className="mb-[18px]">
+                <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">
                   Contraseña
                 </label>
-                <div className="mt-1">
+                <div>
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm transition-colors"
+                    className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
                   />
                 </div>
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-                <p className="text-sm text-red-700">{error}</p>
+              <div className="mb-[18px] flex items-start gap-2">
+                <AlertCircle className="mt-[1px] h-4 w-4 flex-shrink-0 text-[#DC2626]" />
+                <p className="block text-[12px] text-[#DC2626]">{error}</p>
               </div>
             )}
 
-            <div className="flex items-center justify-end">
-              <div className="text-sm">
+            <div className="mt-[-10px] mb-6 flex items-center justify-end">
+              <div>
                 <a
                   href="#"
-                  className="font-medium text-primary hover:text-primary/80 cursor-not-allowed opacity-60"
+                  className="text-[12px] font-medium text-[#1A5EB8] no-underline"
                   title="Funcionalidad no disponible en esta versión"
                   onClick={(e) => e.preventDefault()}
                 >
@@ -121,10 +143,10 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="w-full cursor-pointer rounded-[9px] border-none bg-[#FFC100] p-[13px] text-[14px] font-bold tracking-[0.3px] text-[#0F2547] transition-colors hover:bg-[#e6ad00] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 animate-spin text-[#0F2547]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -133,6 +155,10 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
+
+            <p className="mt-7 text-center text-[11px] leading-[1.6] text-[#9CA3AF]">
+              Sistema desarrollado por estudiantes de <span className="font-bold text-[#374151]">Ingenieria de Sistemas - UPTC</span>
+            </p>
           </form>
         </div>
       </div>

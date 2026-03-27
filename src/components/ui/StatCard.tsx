@@ -8,20 +8,31 @@ interface StatCardProps {
   trend?: string;
   trendUp?: boolean;
   className?: string;
+  iconWrapperClassName?: string;
+  iconClassName?: string;
 }
 
-export function StatCard({ title, value, icon: Icon, trend, trendUp, className }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  icon: Icon,
+  trend,
+  trendUp,
+  className,
+  iconWrapperClassName,
+  iconClassName,
+}: StatCardProps) {
   return (
-    <div className={cn("bg-white overflow-hidden shadow rounded-xl p-5 border border-gray-100", className)}>
-      <div className="flex items-center">
-        <div className="flex-shrink-0 bg-primary/10 rounded-md p-3">
-          <Icon className="h-6 w-6 text-primary" aria-hidden="true" />
+    <div className={cn("bg-white rounded-[10px] border border-[#E5E7EB]/90 p-[14px]", className)}>
+      <div className="flex items-center gap-3">
+        <div className={cn("h-9 w-9 flex-shrink-0 rounded-[9px] bg-[#FFF3CC] text-[#B8860B] flex items-center justify-center", iconWrapperClassName)}>
+          <Icon className={cn("h-5 w-5", iconClassName)} aria-hidden="true" />
         </div>
-        <div className="ml-5 w-0 flex-1">
+        <div className="w-0 flex-1">
           <dl>
-            <dt className="text-sm font-medium text-gray-500 truncate">{title}</dt>
+            <dt className="text-[11px] font-medium text-[#6B7280] truncate mt-[1px]">{title}</dt>
             <dd>
-              <div className="text-2xl font-bold text-gray-900">{value}</div>
+              <div className="text-[20px] font-bold text-[#0F2547] leading-none">{value}</div>
             </dd>
           </dl>
         </div>
