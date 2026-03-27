@@ -90,6 +90,7 @@ export async function register(data: {
   first_name: string;
   last_name: string;
   role_name: RoleName;
+  codigo_uptc?: string;
 }) {
   const payload = {
     ...data,

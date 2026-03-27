@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { GraduationCap, AlertCircle, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -154,6 +155,15 @@ export default function LoginPage() {
                   "Iniciar Sesión"
                 )}
               </button>
+            </div>
+
+            <div className="mt-3">
+              <Link
+                href="/register"
+                className="w-full inline-flex items-center justify-center rounded-[9px] border border-[#D1D5DB] bg-white p-[13px] text-[14px] font-semibold tracking-[0.2px] text-[#0F2547] transition-colors hover:bg-[#FFF8DC]"
+              >
+                Registrarse
+              </Link>
             </div>
 
             <p className="mt-7 text-center text-[11px] leading-[1.6] text-[#9CA3AF]">
