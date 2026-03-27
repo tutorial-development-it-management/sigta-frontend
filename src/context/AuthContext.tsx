@@ -20,6 +20,15 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
 });
 
+function getCookieValue(name: string): string | null {
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${name}=`));
+
+  if (!cookie) return null;
+  return cookie.slice(name.length + 1);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -28,10 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for cookie on load
-    const storedToken = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("token="))
-      ?.split("=")[1];
+    const storedToken = getCookieValue("token");
 
     if (storedToken) {
       setToken(storedToken);
@@ -56,9 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiLogin(email, pass);
       setToken(data.token);
       setUser(data.user);
-      document.cookie = `token=${data.token}; path=/; max-age=7200; SameSite=Lax`; // 2 hours
+      document.cookie = `token=${data.token}; path=/; max-age=1800; SameSite=Lax`; // 30 minutes
       const role = data.user.role_name;
-      document.cookie = `user_role=${role}; path=/; max-age=7200; SameSite=Lax`;
+      document.cookie = `user_role=${role}; path=/; max-age=1800; SameSite=Lax`;
       
       router.push(`/dashboard/${role}`);
     } catch (error) {

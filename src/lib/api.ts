@@ -1,11 +1,12 @@
 export type RoleName = "student" | "tutor" | "coordinator" | "admin";
 
 export interface User {
-  id: number;
+  id: string | number;
   email: string;
   first_name: string;
   last_name: string;
   role_name: RoleName;
+  is_active?: boolean;
 }
 
 export interface LoginResponse {
@@ -36,14 +37,22 @@ function normalizeRole(role: string): RoleName {
 function mapRoleToBackend(role: RoleName): string {
   const map: Record<RoleName, string> = {
     student: "estudiante",
-    tutor: "docente", // Assuming 'docente' based on typical Spanish systems, or could be 'tutor'
+    tutor: "tutor",
     coordinator: "coordinador",
     admin: "admin",
   };
-  // If backend accepts "tutor", we might want to check. But "estudiante" is confirmed.
-  // The user's JSON had "tutor@uptc.edu.co" with role "estudiante". 
-  // Let's stick to safe mapping.
   return map[role] || role;
+}
+
+function getRoleCandidatesForBackend(role: RoleName): string[] {
+  const candidates = [mapRoleToBackend(role)];
+
+  // Some backends use 'docente' while others use 'tutor'.
+  if (role === "tutor") {
+    candidates.push("docente");
+  }
+
+  return Array.from(new Set(candidates));
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
@@ -111,9 +120,106 @@ export async function getMe(token: string): Promise<{ user: User }> {
   }
 
   const json = await res.json();
-  // Normalize role
-  if (json.user && json.user.role_name) {
-    json.user.role_name = normalizeRole(json.user.role_name);
+  const data = json.data ?? json;
+
+  // Normalize role regardless of wrapper shape
+  if (data.user && data.user.role_name) {
+    data.user.role_name = normalizeRole(data.user.role_name);
+  } else if (data.role_name) {
+    data.role_name = normalizeRole(data.role_name);
   }
-  return json;
+
+  return data;
+}
+
+export async function getUsers(
+  token: string,
+  limit = 20,
+  offset = 0
+): Promise<{ items: User[]; total: number; limit: number; offset: number }> {
+  const res = await fetch(`${API_BASE}/usuarios?limit=${limit}&offset=${offset}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Error al obtener usuarios");
+  }
+
+  const json = await res.json();
+  const items = (json.data?.items ?? json.items ?? []).map((user: User) => ({
+    ...user,
+    role_name: normalizeRole(user.role_name),
+  }));
+
+  return {
+    items,
+    total: json.meta?.total ?? items.length,
+    limit: json.meta?.limit ?? limit,
+    offset: json.meta?.offset ?? offset,
+  };
+}
+
+export async function getUserById(token: string, userId: string | number): Promise<User> {
+  const res = await fetch(`${API_BASE}/usuarios/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.message || "Error al obtener usuario");
+  }
+
+  const json = await res.json();
+  const user = (json.data ?? json) as User;
+
+  return {
+    ...user,
+    role_name: normalizeRole(user.role_name),
+  };
+}
+
+export async function updateUserRole(
+  token: string,
+  userId: string | number,
+  roleName: RoleName
+) {
+  const endpoints = [`${API_BASE}/usuarios/${userId}`, `${API_BASE}/usuarios/${userId}/rol`];
+  const roleCandidates = getRoleCandidatesForBackend(roleName);
+  let lastError = "Error al actualizar rol";
+
+  for (const endpoint of endpoints) {
+    for (const candidate of roleCandidates) {
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ role_name: candidate }),
+      });
+
+      if (res.ok) {
+        return res.json().catch(() => ({}));
+      }
+
+      const errorData = await res.json().catch(() => ({}));
+      lastError = errorData.message || lastError;
+
+      if (res.status === 400) {
+        // Try another role alias with same endpoint.
+        continue;
+      }
+
+      if (res.status === 404) {
+        // Try next endpoint shape.
+        break;
+      }
+
+      // For any other status, stop and surface error.
+      throw new Error(lastError);
+    }
+  }
+
+  throw new Error(lastError);
 }
