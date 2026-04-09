@@ -32,9 +32,9 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="flex h-screen bg-[#F4F5F7] overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen bg-[#F4F5F7] overflow-hidden">
       {/* Sidebar */}
-      <Sidebar className="hidden lg:flex flex-col" />
+      <Sidebar className="flex flex-col" />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

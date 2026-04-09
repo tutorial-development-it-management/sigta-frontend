@@ -10,7 +10,6 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,19 +36,9 @@ export default function AdminUsersPage() {
   }, [token]);
 
   const handleSelectUser = async (user: User) => {
-    if (!token) return;
-
     setSelectedUser(user);
-    setLoadingDetail(true);
-
-    try {
-      const detail = await getUserById(token, user.id);
-      setSelectedUser(detail);
-    } catch {
-      // Keep basic list data visible if detail request fails.
-    } finally {
-      setLoadingDetail(false);
-    }
+    // Ya no hacemos petición adicional porque el backend no tiene el endpoint /usuarios/:id
+    // y los datos necesarios ya vienen en la lista
   };
 
   return (
@@ -104,10 +93,6 @@ export default function AdminUsersPage() {
           {!selectedUser ? (
             <div className="h-full min-h-[320px] flex items-center justify-center text-gray-500 text-sm">
               Haz clic sobre un usuario para ver sus datos.
-            </div>
-          ) : loadingDetail ? (
-            <div className="h-full min-h-[320px] flex items-center justify-center text-gray-500 text-sm">
-              Cargando detalle...
             </div>
           ) : (
             <div className="space-y-5">
