@@ -1,27 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Layers, AlertCircle } from "lucide-react";
-import { register } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { register, loading: authLoading, user, role } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [codigoUptc, setCodigoUptc] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && user && role) {
+      router.replace(`/dashboard/${role}`);
+    }
+  }, [authLoading, user, role, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       await register({
@@ -33,14 +40,11 @@ export default function RegisterPage() {
         role_name: "student",
       });
 
-      setSuccess("Registro exitoso. Ahora puedes iniciar sesión.");
-      setTimeout(() => {
-        router.push("/login");
-      }, 1200);
+      setSuccess("Registro exitoso. Redirigiendo al panel...");
     } catch (err: any) {
       setError(err.message || "No fue posible registrar el usuario");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -161,10 +165,10 @@ export default function RegisterPage() {
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={submitting || authLoading}
                 className="w-full cursor-pointer rounded-[9px] border-none bg-[#FFC100] p-[13px] text-[14px] font-bold tracking-[0.3px] text-[#0F2547] transition-colors hover:bg-[#e6ad00] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Registrando..." : "Registrarse"}
+                {submitting || authLoading ? "Registrando..." : "Registrarse"}
               </button>
             </div>
 

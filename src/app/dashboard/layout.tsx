@@ -1,25 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { RoleName } from "@/lib/api";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
+    if (loading) {
+      return;
     }
-  }, [user, loading, router]);
+
+    if (!user || !role) {
+      router.replace("/login");
+      return;
+    }
+
+    if (pathname === "/dashboard" || pathname === "/dashboard/") {
+      router.replace(`/dashboard/${role}`);
+      return;
+    }
+
+    const requestedRole = pathname.split("/")[2] as RoleName | undefined;
+    const rolePaths: RoleName[] = ["admin", "coordinator", "student", "tutor"];
+
+    if (requestedRole && rolePaths.includes(requestedRole) && requestedRole !== role) {
+      router.replace(`/dashboard/${role}`);
+    }
+  }, [user, role, loading, pathname, router]);
 
   if (loading) {
     return (

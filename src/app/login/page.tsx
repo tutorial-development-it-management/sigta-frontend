@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { GraduationCap, AlertCircle, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -10,20 +10,21 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { login, loading } = useAuth();
+  const { login, loading, user, role } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user && role) {
+      router.replace(`/dashboard/${role}`);
+    }
+  }, [loading, user, role, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validate email domain? User said @uptc.edu.co but only as placeholder/hint usually.
-    // The requirement says "Campos: correo institucional (@uptc.edu.co)".
-    // I can enforce simple check if wanted, but backend decides.
-
     try {
       await login(email, password);
-      // login redirects on success
     } catch (err: any) {
       setError(err.message || "Credenciales inválidas");
     }

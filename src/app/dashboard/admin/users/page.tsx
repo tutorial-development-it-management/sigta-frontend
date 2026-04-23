@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { getUserById, getUsers, User } from "@/lib/api";
+import { getUsers, User } from "@/lib/api";
 import { Users, Mail, Shield, CheckCircle2, XCircle } from "lucide-react";
 
 export default function AdminUsersPage() {
-  const { token } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -14,16 +12,11 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (!token) {
-        setLoadingUsers(false);
-        return;
-      }
-
       setLoadingUsers(true);
       setUsersError(null);
 
       try {
-        const response = await getUsers(token, 50, 0);
+        const response = await getUsers(50, 0);
         setUsers(response.items);
       } catch (err: any) {
         setUsersError(err.message || "Error al cargar usuarios");
@@ -33,7 +26,7 @@ export default function AdminUsersPage() {
     };
 
     load();
-  }, [token]);
+  }, []);
 
   const handleSelectUser = async (user: User) => {
     setSelectedUser(user);

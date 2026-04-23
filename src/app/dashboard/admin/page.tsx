@@ -15,10 +15,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { getUsers, register, RoleName, updateUserRole, User } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 
 export default function AdminDashboard() {
-  const { token } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | RoleName>("all");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -43,11 +41,10 @@ export default function AdminDashboard() {
   const [regError, setRegError] = useState<string | null>(null);
 
   const loadUsers = async () => {
-    if (!token) return;
     setUsersLoading(true);
     setUsersError(null);
     try {
-      const response = await getUsers(token);
+      const response = await getUsers();
       setUsers(response.items);
     } catch (err: any) {
       setUsersError(err.message || "Error al cargar usuarios");
@@ -57,12 +54,8 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (token) {
-      loadUsers();
-      return;
-    }
-    setUsersLoading(false);
-  }, [token]);
+    loadUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -92,12 +85,12 @@ export default function AdminDashboard() {
   };
 
   const handleSaveRole = async () => {
-    if (!selectedUser || !token) return;
+    if (!selectedUser) return;
 
     setEditLoading(true);
     setEditError(null);
     try {
-      await updateUserRole(token, selectedUser.id, editRole);
+      await updateUserRole(selectedUser.id, editRole);
       setUsers((prev) =>
         prev.map((u) =>
           u.id === selectedUser.id
