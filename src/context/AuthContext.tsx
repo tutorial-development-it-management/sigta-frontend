@@ -208,17 +208,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const resolveRedirect = async () => {
       try {
-        console.log("[redirect] Llamando getRedirectResult...");
         const result = await getRedirectResult(auth);
-        console.log("[redirect] result:", result);
         
         if (!result?.user || !isMounted) {
-          console.log("[redirect] Sin usuario o desmontado. result?.user:", result?.user);
           return;
         }
 
         const token = await result.user.getIdToken(true);
-        console.log("[redirect] Token obtenido:", !!token);
 
         if (!isMounted) {
           return;
@@ -228,7 +224,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIdToken(token);
         setApiAccessToken(token, true);
       } catch (error){
-        console.error("[redirect] Error:", error);
       } finally {
         setGoogleAuthIntent(false);
       }
