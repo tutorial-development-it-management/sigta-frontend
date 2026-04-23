@@ -3,6 +3,16 @@
 import { auth } from "@/lib/firebase";
 
 export type RoleName = "student" | "tutor" | "coordinator" | "admin";
+export type CanonicalRole = "admin" | "coordinador" | "tutor" | "estudiante";
+
+export const ACCESS_DENIED_ROUTE = "/acceso-denegado";
+
+const ROLE_REDIRECT_MAP: Record<CanonicalRole, string> = {
+  admin: "/admin",
+  coordinador: "/coordinacion",
+  tutor: "/tutor",
+  estudiante: "/estudiante",
+};
 
 export interface User {
   id: string | number;
@@ -10,10 +20,11 @@ export interface User {
   first_name: string;
   last_name: string;
   role_name: RoleName;
+  role_id?: string | number;
   is_active?: boolean;
 }
 
-export interface RegisterPayload {
+export interface RegisterUserInput {
   email: string;
   password?: string;
   first_name: string;
@@ -22,28 +33,123 @@ export interface RegisterPayload {
   codigo_uptc?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "/api";
+export interface RoleChangeInput {
+  role_name?: RoleName;
+  role_id?: string | number;
+}
 
-type ApiRequestOptions = RequestInit & {
+export interface PaginatedUsersResponse {
+  items: User[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface RegisterUserResponse {
+  message?: string;
+  user?: User;
+}
+
+export interface RoleChangeResponse {
+  message?: string;
+  user?: User;
+}
+
+export interface LoginBackendResponse {
+  message?: string;
+  user: User;
+  role_name: string;
+}
+
+interface ApiRequestOptions extends RequestInit {
   authRequired?: boolean;
   forceRefreshToken?: boolean;
   defaultErrorMessage?: string;
-};
+  skipGlobalUnauthorizedHandler?: boolean;
+}
+
+interface BackendEnvelope<T> {
+  data?: T;
+  message?: string;
+  error?: string;
+  code?: string;
+  meta?: {
+    total?: number;
+    limit?: number;
+    offset?: number;
+  };
+}
+
+interface BackendUserDto {
+  id: string | number;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role_name: string;
+  role_id?: string | number;
+  is_active?: boolean;
+}
+
+interface AuthMeDataDto {
+  user?: BackendUserDto;
+}
+
+interface UsersCollectionDto {
+  items?: BackendUserDto[];
+}
+
+interface RegisterUserRequestDto {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  role_name: string;
+  codigo_uptc?: string;
+}
+
+interface RoleChangeRequestDto {
+  role_name?: string;
+  role_id?: string | number;
+}
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
+  ?? (process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api` : "http://localhost:3000/api");
+
+const TOKEN_STORAGE_KEY = "sigta.auth.firebase.idToken";
+
+let memoryAccessToken: string | null = null;
+let unauthorizedHandler: (() => void) | null = null;
+
+function isBrowserEnvironment() {
+  return typeof window !== "undefined";
+}
 
 function normalizeRole(role: string): RoleName {
   const map: Record<string, RoleName> = {
     estudiante: "student",
     alumno: "student",
-    docente: "tutor",
     tutor: "tutor",
+    docente: "tutor",
     profesor: "tutor",
     coordinador: "coordinator",
     admin: "admin",
     administrativo: "admin",
   };
-  return map[role.toLowerCase()] || (role as RoleName);
+
+  const normalized = map[role.toLowerCase()];
+  return normalized ?? "student";
 }
 
 function mapRoleToBackend(role: RoleName): string {
@@ -53,60 +159,151 @@ function mapRoleToBackend(role: RoleName): string {
     coordinator: "coordinador",
     admin: "admin",
   };
-  return map[role] || role;
+
+  return map[role];
 }
 
-function getRoleCandidatesForBackend(role: RoleName): string[] {
-  const candidates = [mapRoleToBackend(role)];
-
-  // Some backends use 'docente' while others use 'tutor'.
-  if (role === "tutor") {
-    candidates.push("docente");
-  }
-
-  return Array.from(new Set(candidates));
-}
-
-function extractErrorMessage(payload: any, fallback: string): string {
-  if (!payload || typeof payload !== "object") {
-    return fallback;
-  }
-
-  return payload.message || payload.error || payload.data?.message || fallback;
-}
-
-async function parseJsonSafe(response: Response): Promise<any> {
-  return response.json().catch(() => ({}));
-}
-
-function normalizeUser(user: User): User {
+function mapUserDto(user: BackendUserDto): User {
   return {
-    ...user,
+    id: user.id,
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
     role_name: normalizeRole(user.role_name),
+    role_id: user.role_id,
+    is_active: user.is_active,
   };
 }
 
-async function buildHeaders(
-  baseHeaders?: HeadersInit,
-  authRequired = false,
-  forceRefreshToken = false
-) {
-  const headers = new Headers(baseHeaders);
-
-  if (authRequired) {
-    if (!auth) {
-      throw new Error("Firebase Auth no está disponible en este entorno");
-    }
-
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      throw new Error("No hay una sesión activa en Firebase");
-    }
-
-    const idToken = await currentUser.getIdToken(forceRefreshToken);
-    headers.set("Authorization", `Bearer ${idToken}`);
+function extractMessageFromPayload(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
   }
 
+  const data = payload as {
+    message?: unknown;
+    error?: unknown;
+    data?: { message?: unknown };
+  };
+
+  if (typeof data.message === "string" && data.message.trim().length > 0) {
+    return data.message;
+  }
+
+  if (typeof data.error === "string" && data.error.trim().length > 0) {
+    return data.error;
+  }
+
+  if (typeof data.data?.message === "string" && data.data.message.trim().length > 0) {
+    return data.data.message;
+  }
+
+  return null;
+}
+
+function unwrapData<T>(payload: unknown): T | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const envelope = payload as BackendEnvelope<T>;
+  if (envelope.data !== undefined) {
+    return envelope.data;
+  }
+
+  return payload as T;
+}
+
+async function parseJsonSafe(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function getStatusFallback(status: number, fallback: string): string {
+  if (status === 401) {
+    return "Sesion expirada. Inicia sesion con Google nuevamente.";
+  }
+
+  if (status === 403) {
+    return "Sin permisos";
+  }
+
+  return fallback;
+}
+
+function toApiError(status: number, payload: unknown, fallback: string): ApiError {
+  const message = extractMessageFromPayload(payload) ?? getStatusFallback(status, fallback);
+
+  let code: string | undefined;
+  if (payload && typeof payload === "object") {
+    const rawCode = (payload as { code?: unknown }).code;
+    if (typeof rawCode === "string") {
+      code = rawCode;
+    }
+  }
+
+  return new ApiError(message, status, code);
+}
+
+function generateTechnicalPassword(length = 32) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=[]{}";
+  const values = new Uint32Array(length);
+
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    crypto.getRandomValues(values);
+  } else {
+    for (let index = 0; index < length; index += 1) {
+      values[index] = Math.floor(Math.random() * alphabet.length);
+    }
+  }
+
+  let password = "";
+  for (let index = 0; index < length; index += 1) {
+    const selectedIndex = Number(values[index] % alphabet.length);
+    password += alphabet[selectedIndex];
+  }
+
+  return password;
+}
+
+function dispatchUnauthorized() {
+  unauthorizedHandler?.();
+
+  if (isBrowserEnvironment()) {
+    window.dispatchEvent(new CustomEvent("sigta:auth:unauthorized"));
+  }
+}
+
+async function resolveAccessToken(forceRefreshToken = false): Promise<string | null> {
+  if (auth?.currentUser) {
+    const freshToken = await auth.currentUser.getIdToken(forceRefreshToken);
+    setApiAccessToken(freshToken, true);
+    return freshToken;
+  }
+
+  return getApiAccessToken();
+}
+
+async function withAuthHeader(
+  headersInput: HeadersInit | undefined,
+  authRequired: boolean,
+  forceRefreshToken: boolean
+): Promise<Headers> {
+  const headers = new Headers(headersInput);
+
+  if (!authRequired) {
+    return headers;
+  }
+
+  const idToken = await resolveAccessToken(forceRefreshToken);
+  if (!idToken) {
+    throw new ApiError("Sesion expirada. Inicia sesion con Google nuevamente.", 401);
+  }
+
+  headers.set("Authorization", `Bearer ${idToken}`);
   return headers;
 }
 
@@ -115,122 +312,296 @@ async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Pro
     authRequired = false,
     forceRefreshToken = false,
     defaultErrorMessage = "Error en la solicitud",
+    skipGlobalUnauthorizedHandler = false,
     headers,
-    ...init
+    ...requestConfig
   } = options;
 
-  const requestHeaders = await buildHeaders(headers, authRequired, forceRefreshToken);
+  const requestHeaders = await withAuthHeader(headers, authRequired, forceRefreshToken);
   const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
+    ...requestConfig,
     headers: requestHeaders,
   });
+
   const payload = await parseJsonSafe(response);
 
   if (!response.ok) {
-    throw new Error(extractErrorMessage(payload, defaultErrorMessage));
+    const error = toApiError(response.status, payload, defaultErrorMessage);
+
+    if (response.status === 401 && authRequired && !skipGlobalUnauthorizedHandler) {
+      clearApiAccessToken();
+      dispatchUnauthorized();
+    }
+
+    throw error;
   }
 
   return payload as T;
 }
 
-export async function register(data: RegisterPayload) {
-  const payload = {
-    ...data,
+export function setApiAccessToken(token: string | null, persist = true) {
+  memoryAccessToken = token;
+
+  if (!isBrowserEnvironment()) {
+    return;
+  }
+
+  if (!token) {
+    window.sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    return;
+  }
+
+  if (persist) {
+    window.sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+  }
+}
+
+export function getApiAccessToken() {
+  if (memoryAccessToken) {
+    return memoryAccessToken;
+  }
+
+  if (!isBrowserEnvironment()) {
+    return null;
+  }
+
+  const stored = window.sessionStorage.getItem(TOKEN_STORAGE_KEY);
+  if (stored) {
+    memoryAccessToken = stored;
+    return stored;
+  }
+
+  return null;
+}
+
+export function clearApiAccessToken() {
+  setApiAccessToken(null);
+}
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message || fallback;
+  }
+
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+
+  return fallback;
+}
+
+export function toCanonicalRole(roleName?: string | null): CanonicalRole | null {
+  if (!roleName) {
+    return null;
+  }
+
+  const normalized = roleName.trim().toLowerCase();
+
+  if (normalized === "admin" || normalized === "administrativo") {
+    return "admin";
+  }
+
+  if (normalized === "coordinador" || normalized === "coordinator") {
+    return "coordinador";
+  }
+
+  if (normalized === "tutor" || normalized === "docente" || normalized === "profesor") {
+    return "tutor";
+  }
+
+  if (normalized === "estudiante" || normalized === "student" || normalized === "alumno") {
+    return "estudiante";
+  }
+
+  return null;
+}
+
+export function resolveRouteByRole(roleName?: string | null): string {
+  const canonicalRole = toCanonicalRole(roleName);
+  if (!canonicalRole) {
+    return ACCESS_DENIED_ROUTE;
+  }
+
+  return ROLE_REDIRECT_MAP[canonicalRole];
+}
+
+export async function loginWithGoogleToken(idToken: string): Promise<LoginBackendResponse> {
+  const response = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+
+  const payload = await parseJsonSafe(response);
+  if (!response.ok) {
+    throw toApiError(response.status, payload, "No fue posible validar la sesion con el backend");
+  }
+
+  const responseData = unwrapData<{ user?: BackendUserDto } | BackendUserDto>(payload);
+  const userDto = responseData && typeof responseData === "object" && "user" in responseData
+    ? responseData.user
+    : (responseData as BackendUserDto | null);
+
+  if (!userDto || typeof userDto !== "object" || !("role_name" in userDto)) {
+    throw new ApiError("El backend no retorno datos de usuario en /auth/login", 500);
+  }
+
+  const mappedUser = mapUserDto(userDto);
+
+  return {
+    message: extractMessageFromPayload(payload) ?? undefined,
+    user: mappedUser,
+    role_name: userDto.role_name,
+  };
+}
+
+export async function registerUser(data: RegisterUserInput): Promise<RegisterUserResponse> {
+  const payload: RegisterUserRequestDto = {
+    email: data.email,
+    password: data.password?.trim() || generateTechnicalPassword(),
+    first_name: data.first_name,
+    last_name: data.last_name,
     role_name: mapRoleToBackend(data.role_name),
+    codigo_uptc: data.codigo_uptc,
   };
 
-  return apiRequest("/auth/register", {
+  const response = await apiRequest<unknown>("/auth/register", {
     method: "POST",
     authRequired: true,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     defaultErrorMessage: "Error al registrar usuario",
   });
-}
 
-export async function getMe(forceRefreshToken = false): Promise<{ user: User }> {
-  const payload = await apiRequest<any>("/auth/me", {
-    authRequired: true,
-    forceRefreshToken,
-    defaultErrorMessage: "No fue posible obtener el perfil",
-  });
+  const userData = unwrapData<BackendUserDto>(response);
+  const responseMessage = extractMessageFromPayload(response) ?? undefined;
 
-  const data = payload.data ?? payload;
-  const profile = data.user ?? data;
-
-  if (!profile?.role_name) {
-    throw new Error("El perfil de usuario no tiene rol asignado");
+  if (userData && typeof userData === "object" && "role_name" in userData) {
+    return {
+      message: responseMessage,
+      user: mapUserDto(userData),
+    };
   }
 
   return {
-    user: normalizeUser(profile as User),
+    message: responseMessage,
   };
 }
 
-export async function getUsers(
-  limit = 20,
-  offset = 0
-): Promise<{ items: User[]; total: number; limit: number; offset: number }> {
-  const payload = await apiRequest<any>(`/usuarios?limit=${limit}&offset=${offset}`, {
+export async function getMe(forceRefreshToken = false): Promise<{ user: User }> {
+  const response = await apiRequest<unknown>("/auth/me", {
+    authRequired: true,
+    forceRefreshToken,
+    defaultErrorMessage: "No fue posible obtener el perfil",
+    skipGlobalUnauthorizedHandler: true,
+  });
+
+  const data = unwrapData<AuthMeDataDto | BackendUserDto>(response);
+
+  let profile: BackendUserDto | null = null;
+  if (data && typeof data === "object") {
+    if ("user" in data && data.user) {
+      profile = data.user;
+    } else if ("role_name" in data) {
+      profile = data as BackendUserDto;
+    }
+  }
+
+  if (!profile) {
+    throw new ApiError("El perfil de usuario no fue retornado por el backend", 500);
+  }
+
+  return { user: mapUserDto(profile) };
+}
+
+export async function logoutFromBackend() {
+  await apiRequest<unknown>("/auth/logout", {
+    method: "POST",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+    defaultErrorMessage: "No fue posible cerrar sesion en el backend",
+  });
+}
+
+export async function userList(limit = 20, offset = 0): Promise<PaginatedUsersResponse> {
+  const response = await apiRequest<unknown>(`/usuarios?limit=${limit}&offset=${offset}`, {
     authRequired: true,
     defaultErrorMessage: "Error al obtener usuarios",
   });
 
-  const items = (payload.data?.items ?? payload.items ?? []).map((user: User) =>
-    normalizeUser(user)
-  );
+  const data = unwrapData<UsersCollectionDto | BackendUserDto[]>(response);
+  const envelope = response as BackendEnvelope<UsersCollectionDto>;
+
+  const rawItems = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.items)
+      ? data.items
+      : [];
+
+  const items = rawItems.map(mapUserDto);
 
   return {
     items,
-    total: payload.meta?.total ?? items.length,
-    limit: payload.meta?.limit ?? limit,
-    offset: payload.meta?.offset ?? offset,
+    total: envelope.meta?.total ?? items.length,
+    limit: envelope.meta?.limit ?? limit,
+    offset: envelope.meta?.offset ?? offset,
   };
 }
 
-export async function getUserById(userId: string | number): Promise<User> {
-  const payload = await apiRequest<any>(`/usuarios/${userId}`, {
+export async function roleChange(
+  userId: string | number,
+  roleInput: RoleChangeInput
+): Promise<RoleChangeResponse> {
+  const body: RoleChangeRequestDto = {};
+
+  if (roleInput.role_name) {
+    body.role_name = mapRoleToBackend(roleInput.role_name);
+  }
+
+  if (roleInput.role_id !== undefined) {
+    body.role_id = roleInput.role_id;
+  }
+
+  if (!body.role_name && body.role_id === undefined) {
+    throw new ApiError("Debe enviar role_name o role_id para cambiar el rol", 400);
+  }
+
+  const response = await apiRequest<unknown>(`/usuarios/${userId}/rol`, {
+    method: "PATCH",
     authRequired: true,
-    defaultErrorMessage: "Error al obtener usuario",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    defaultErrorMessage: "Error al actualizar rol",
   });
 
-  const user = (payload.data ?? payload) as User;
-  return normalizeUser(user);
+  const userData = unwrapData<BackendUserDto>(response);
+  const responseMessage = extractMessageFromPayload(response) ?? undefined;
+
+  if (userData && typeof userData === "object" && "role_name" in userData) {
+    return {
+      message: responseMessage,
+      user: mapUserDto(userData),
+    };
+  }
+
+  return {
+    message: responseMessage,
+  };
 }
 
+// Backward-compatible exports for existing UI wiring.
+export type RegisterPayload = RegisterUserInput;
+export const register = registerUser;
+export const getUsers = userList;
+
 export async function updateUserRole(userId: string | number, roleName: RoleName) {
-  const endpoints = [`${API_BASE}/usuarios/${userId}`, `${API_BASE}/usuarios/${userId}/rol`];
-  const roleCandidates = getRoleCandidatesForBackend(roleName);
-  let lastError = "Error al actualizar rol";
-
-  for (const endpoint of endpoints) {
-    for (const candidate of roleCandidates) {
-      const headers = await buildHeaders({ "Content-Type": "application/json" }, true);
-      const response = await fetch(endpoint, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ role_name: candidate }),
-      });
-
-      if (response.ok) {
-        return parseJsonSafe(response);
-      }
-
-      const errorPayload = await parseJsonSafe(response);
-      lastError = extractErrorMessage(errorPayload, lastError);
-
-      if (response.status === 400) {
-        // Retry with another role alias for the same endpoint.
-        continue;
-      }
-
-      if (response.status === 404) {
-        // Try the next endpoint shape.
-        break;
-      }
-
-      throw new Error(lastError);
-    }
-  }
-  throw new Error(lastError);
+  return roleChange(userId, { role_name: roleName });
 }

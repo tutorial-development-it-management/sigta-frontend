@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { getErrorMessage } from "@/lib/api";
 import { GraduationCap, AlertCircle, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { login, loading, user, role } = useAuth();
+  const { loginWithGoogle, loading, user, role } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -19,14 +18,13 @@ export default function LoginPage() {
     }
   }, [loading, user, role, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
     setError(null);
 
     try {
-      await login(email, password);
-    } catch (err: any) {
-      setError(err.message || "Credenciales inválidas");
+      await loginWithGoogle();
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "No fue posible iniciar sesion con Google"));
     }
   };
 
@@ -86,40 +84,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form className="mt-0" onSubmit={handleSubmit}>
-            <div>
-              <div className="mb-[18px]">
-                <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">
-                  Correo Institucional
-                </label>
-                <div>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="usuario@uptc.edu.co"
-                    className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-[18px]">
-                <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">
-                  Contraseña
-                </label>
-                <div>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
-                  />
-                </div>
-              </div>
-            </div>
+          <div className="mt-0">
 
             {error && (
               <div className="mb-[18px] flex items-start gap-2">
@@ -128,22 +93,10 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="mt-[-10px] mb-6 flex items-center justify-end">
-              <div>
-                <a
-                  href="#"
-                  className="text-[12px] font-medium text-[#1A5EB8] no-underline"
-                  title="Funcionalidad no disponible en esta versión"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  ¿Olvidaste tu contraseña?
-                </a>
-              </div>
-            </div>
-
             <div>
               <button
-                type="submit"
+                type="button"
+                onClick={handleGoogleLogin}
                 disabled={loading}
                 className="w-full cursor-pointer rounded-[9px] border-none bg-[#FFC100] p-[13px] text-[14px] font-bold tracking-[0.3px] text-[#0F2547] transition-colors hover:bg-[#e6ad00] disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -153,7 +106,7 @@ export default function LoginPage() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
-                  "Iniciar Sesión"
+                  "Iniciar sesión con Google"
                 )}
               </button>
             </div>
@@ -167,10 +120,21 @@ export default function LoginPage() {
               </Link>
             </div>
 
+            <div className="mt-3">
+              <a
+                href="https://accounts.google.com/signin/v2/usernamerecovery"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center rounded-[9px] border border-[#D1D5DB] bg-white p-[13px] text-[14px] font-semibold tracking-[0.2px] text-[#1A5EB8] transition-colors hover:bg-[#F5F9FF]"
+              >
+                Recuperar contraseña
+              </a>
+            </div>
+
             <p className="mt-7 text-center text-[11px] leading-[1.6] text-[#9CA3AF]">
               Sistema desarrollado por estudiantes de <span className="font-bold text-[#374151]">Ingenieria de Sistemas - UPTC</span>
             </p>
-          </form>
+          </div>
         </div>
       </div>
     </div>

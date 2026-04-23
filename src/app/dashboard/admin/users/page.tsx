@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUsers, User } from "@/lib/api";
+import { getErrorMessage, userList, User } from "@/lib/api";
 import { Users, Mail, Shield, CheckCircle2, XCircle } from "lucide-react";
 
 export default function AdminUsersPage() {
@@ -16,10 +16,10 @@ export default function AdminUsersPage() {
       setUsersError(null);
 
       try {
-        const response = await getUsers(50, 0);
+        const response = await userList(20, 0);
         setUsers(response.items);
-      } catch (err: any) {
-        setUsersError(err.message || "Error al cargar usuarios");
+      } catch (err: unknown) {
+        setUsersError(getErrorMessage(err, "Error al cargar usuarios"));
       } finally {
         setLoadingUsers(false);
       }

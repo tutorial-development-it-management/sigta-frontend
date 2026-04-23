@@ -14,7 +14,14 @@ import {
 import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { getUsers, register, RoleName, updateUserRole, User } from "@/lib/api";
+import {
+  getErrorMessage,
+  registerUser,
+  roleChange,
+  RoleName,
+  userList,
+  User,
+} from "@/lib/api";
 
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,10 +51,10 @@ export default function AdminDashboard() {
     setUsersLoading(true);
     setUsersError(null);
     try {
-      const response = await getUsers();
+      const response = await userList(20, 0);
       setUsers(response.items);
-    } catch (err: any) {
-      setUsersError(err.message || "Error al cargar usuarios");
+    } catch (err: unknown) {
+      setUsersError(getErrorMessage(err, "Error al cargar usuarios"));
     } finally {
       setUsersLoading(false);
     }
@@ -90,7 +97,7 @@ export default function AdminDashboard() {
     setEditLoading(true);
     setEditError(null);
     try {
-      await updateUserRole(selectedUser.id, editRole);
+      await roleChange(selectedUser.id, { role_name: editRole });
       setUsers((prev) =>
         prev.map((u) =>
           u.id === selectedUser.id
@@ -104,8 +111,8 @@ export default function AdminDashboard() {
       setIsEditModalOpen(false);
       setSelectedUser(null);
       alert("Rol actualizado correctamente");
-    } catch (err: any) {
-      setEditError(err.message || "Error al actualizar rol");
+    } catch (err: unknown) {
+      setEditError(getErrorMessage(err, "Error al actualizar rol"));
     } finally {
       setEditLoading(false);
     }
@@ -115,13 +122,13 @@ export default function AdminDashboard() {
     setRegLoading(true);
     setRegError(null);
     try {
-      await register(regData);
+      await registerUser(regData);
       setIsRegisterModalOpen(false);
       alert("Usuario registrado exitosamente");
       setRegData({ email: "", password: "", first_name: "", last_name: "", role_name: "student" });
       await loadUsers();
-    } catch (err: any) {
-      setRegError(err.message || "Error al registrar");
+    } catch (err: unknown) {
+      setRegError(getErrorMessage(err, "Error al registrar"));
     } finally {
       setRegLoading(false);
     }

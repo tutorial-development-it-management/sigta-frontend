@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Layers, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { getErrorMessage } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -41,8 +42,8 @@ export default function RegisterPage() {
       });
 
       setSuccess("Registro exitoso. Redirigiendo al panel...");
-    } catch (err: any) {
-      setError(err.message || "No fue posible registrar el usuario");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "No fue posible registrar el usuario"));
     } finally {
       setSubmitting(false);
     }
@@ -146,7 +147,6 @@ export default function RegisterPage() {
               <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">Contraseña</label>
               <input
                 type="password"
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
