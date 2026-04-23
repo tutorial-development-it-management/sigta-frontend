@@ -17,11 +17,10 @@ import {
 import {
   User as FirebaseUser,
   GoogleAuthProvider,
-  browserSessionPersistence,
   getRedirectResult,
   onAuthStateChanged,
-  setPersistence,
-  signInWithRedirect,
+  //signInWithRedirect,
+  signInWithPopup,
   signOut,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -48,10 +47,10 @@ const AuthContext = createContext<AuthContextType>({
   firebaseUser: null,
   idToken: null,
   loading: false,
-  login: async () => {},
-  loginWithGoogle: async () => {},
-  register: async () => {},
-  logout: async () => {},
+  login: async () => { },
+  loginWithGoogle: async () => { },
+  register: async () => { },
+  logout: async () => { },
   refreshToken: async () => null,
 });
 
@@ -181,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("Firebase Auth no esta disponible en este entorno");
     }
 
-    await setPersistence(auth, browserSessionPersistence);
+    //await setPersistence(auth, browserSessionPersistence);
 
     if (auth.currentUser) {
       const token = await auth.currentUser.getIdToken(forceRefreshToken);
@@ -195,7 +194,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     provider.setCustomParameters({ prompt: "select_account" });
 
     setGoogleAuthIntent(true);
-    await signInWithRedirect(auth, provider);
+    //await signInWithRedirect(auth, provider);
+    await signInWithPopup(auth, provider);
     return null;
   }, []);
 
@@ -208,12 +208,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const resolveRedirect = async () => {
       try {
+        console.log("[redirect] Llamando getRedirectResult...");
         const result = await getRedirectResult(auth);
+        console.log("[redirect] result:", result);
+        
         if (!result?.user || !isMounted) {
+          console.log("[redirect] Sin usuario o desmontado. result?.user:", result?.user);
           return;
         }
 
         const token = await result.user.getIdToken(true);
+        console.log("[redirect] Token obtenido:", !!token);
 
         if (!isMounted) {
           return;
@@ -222,6 +227,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setFirebaseUser(result.user);
         setIdToken(token);
         setApiAccessToken(token, true);
+      } catch (error){
+        console.error("[redirect] Error:", error);
       } finally {
         setGoogleAuthIntent(false);
       }
