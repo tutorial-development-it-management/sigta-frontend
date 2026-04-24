@@ -12,7 +12,7 @@ export default function TutorDashboard() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold font-heading text-[#0F2547]">Hola, {user?.first_name}</h1>
-        <p className="mt-2 text-gray-600">Docente Tutor • Departamento de Ingeniería</p>
+        <p className="mt-2 text-gray-600">Docente Tutor • Facultad de Ingeniería</p>
       </div>
 
       <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-3">
