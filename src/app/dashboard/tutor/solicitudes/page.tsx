@@ -54,9 +54,15 @@ function SolicitudCard({
     weekday: "short", day: "numeric", month: "short", year: "numeric",
   });
 
-  const hora = solicitud.preferred_time
-    ? new Date(`1970-01-01T${solicitud.preferred_time}`).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })
-    : "";
+  const hora = (() => {
+    if (!solicitud.preferred_time) return "";
+    try {
+      const d = solicitud.preferred_time.includes("T")
+        ? new Date(solicitud.preferred_time)
+        : new Date(`1970-01-01T${solicitud.preferred_time}`);
+      return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+    } catch { return ""; }
+  })();
 
   const iniciales = solicitud.student.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("");
 
