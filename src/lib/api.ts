@@ -540,6 +540,45 @@ export interface Subject {
   program: string | null;
 }
 
+export interface TutorBasic {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+export async function getTutorsBySubject(subjectId: number): Promise<TutorBasic[]> {
+  const response = await apiRequest<unknown>(`/subjects/${subjectId}/tutors`, {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener tutores",
+  });
+  const data = unwrapData<{ items?: TutorBasic[] } | TutorBasic[]>(response);
+  if (Array.isArray(data)) return data;
+  return data?.items ?? [];
+}
+
+export interface CreateTutoringRequestInput {
+  student_id: string;
+  subject_id: number;
+  tutor_id?: string;
+  preferred_date: string;
+  preferred_time: string;
+  modality: string;
+  topic?: string;
+}
+
+export async function createTutoringRequest(input: CreateTutoringRequestInput): Promise<TutoringRequest> {
+  const response = await apiRequest<unknown>("/tutorias", {
+    method: "POST",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    defaultErrorMessage: "Error al crear la solicitud",
+  });
+  const data = unwrapData<TutoringRequest>(response);
+  if (!data) throw new ApiError("No se recibió la solicitud creada", 500);
+  return data;
+}
+
 export async function getSubjects(): Promise<Subject[]> {
   const response = await apiRequest<unknown>("/subjects", {
     authRequired: true,

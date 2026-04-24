@@ -3,9 +3,10 @@
 import { useAuth } from "@/context/AuthContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatCard } from "@/components/ui/StatCard";
-import { BookOpen, Clock, CheckCircle, XCircle, Calendar, Search } from "lucide-react";
+import { BookOpen, Clock, CheckCircle, XCircle, Calendar, Search, Plus } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/components/ui/Button";
+import Link from "next/link";
 import { getRequests, cancelRequest, TutoringRequest, getErrorMessage } from "@/lib/api";
 
 type TabKey = "todas" | "pendiente" | "aceptada" | "realizada" | "cancelada";
@@ -99,9 +100,18 @@ export default function MisTutoriasPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold font-heading text-[#0F2547]">Mis Tutorías</h1>
-        <p className="mt-1 text-sm text-gray-500">Consulta y gestiona todas tus sesiones de tutoría académica.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold font-heading text-[#0F2547]">Mis Tutorías</h1>
+          <p className="mt-1 text-sm text-gray-500">Consulta y gestiona todas tus sesiones de tutoría académica.</p>
+        </div>
+        <Link
+          href="/dashboard/student/tutorias/nueva"
+          className="flex items-center gap-2 px-4 py-2 rounded-[9px] bg-[#FFC100] text-[#0F2547] text-[13px] font-bold hover:bg-[#e6ad00] transition-colors flex-shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Nueva solicitud
+        </Link>
       </div>
 
       <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-4">
