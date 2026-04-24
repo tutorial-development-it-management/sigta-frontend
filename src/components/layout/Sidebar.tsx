@@ -56,8 +56,8 @@ export function Sidebar({ className }: SidebarProps) {
     case "student":
       navigation = [
         { name: "Inicio", href: "/dashboard/student", icon: Home, current: pathname === "/dashboard/student" },
+        { name: "Mis Tutorías", href: "/dashboard/student/tutorias", icon: BookOpen, current: pathname === "/dashboard/student/tutorias" },
         // Future
-        { name: "Mis Tutorías", href: "#", icon: BookOpen, current: false, disabled: true },
         { name: "Calendario", href: "#", icon: Calendar, current: false, disabled: true },
         { name: "Mi Perfil", href: "#", icon: Users, current: false, disabled: true },
       ];
