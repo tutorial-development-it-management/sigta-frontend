@@ -19,6 +19,14 @@ const MODALITIES = [
   { value: "hibrida",    label: "Híbrida" },
 ];
 
+function getLocalDateString() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, "0");
+  const dd   = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export default function NuevaSolicitudPage() {
   const router  = useRouter();
   const { user } = useAuth();
@@ -187,7 +195,7 @@ export default function NuevaSolicitudPage() {
               type="date"
               value={form.preferred_date}
               onChange={set("preferred_date")}
-              min={new Date().toISOString().split("T")[0]}
+              min={getLocalDateString()}
               required
               className={inputClass}
             />

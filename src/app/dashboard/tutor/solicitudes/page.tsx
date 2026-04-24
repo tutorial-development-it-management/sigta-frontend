@@ -7,8 +7,6 @@ import { ClipboardList, CheckCircle, XCircle, Clock, BookOpen, Calendar, Chevron
 import { cn } from "@/components/ui/Button";
 import { getRequests, acceptRequest, cancelRequest, TutoringRequest, getErrorMessage } from "@/lib/api";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
 type TabKey = "todas" | "pendiente" | "aceptada" | "cancelada";
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -18,72 +16,96 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "cancelada", label: "Canceladas" },
 ];
 
-const estadoConfig: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  pendiente: { label: "Pendiente", className: "bg-[#FFF3CC] text-[#B8860B]",   icon: <Clock        className="h-3 w-3" /> },
-  aceptada:  { label: "Aceptada",  className: "bg-[#E6F4EA] text-[#1E7E34]",   icon: <CheckCircle  className="h-3 w-3" /> },
-  cancelada: { label: "Cancelada", className: "bg-red-50 text-red-600",         icon: <XCircle      className="h-3 w-3" /> },
-  realizada: { label: "Realizada", className: "bg-gray-100 text-gray-600",      icon: <CheckCircle  className="h-3 w-3" /> },
+const estadoConfig: Record<string, { label: string; className: string }> = {
+  pendiente: { label: "Pendiente", className: "bg-[#FFF3CC] text-[#B8860B]" },
+  aceptada:  { label: "Aceptada",  className: "bg-[#E6F4EA] text-[#1E7E34]" },
+  cancelada: { label: "Cancelada", className: "bg-red-50 text-red-600" },
+  realizada: { label: "Realizada", className: "bg-gray-100 text-gray-600" },
 };
 
-function EstadoBadge({ estado }: { estado: string }) {
-  const cfg = estadoConfig[estado] ?? { label: estado, className: "bg-gray-100 text-gray-600", icon: null };
-  return (
-    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold", cfg.className)}>
-      {cfg.icon}{cfg.label}
-    </span>
-  );
+function formatTime(timeStr: string): string {
+  if (!timeStr) return "";
+  try {
+    const d = timeStr.includes("T") ? new Date(timeStr) : new Date(`1970-01-01T${timeStr}`);
+    return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
 }
 
-// ─── Card de solicitud ────────────────────────────────────────────────────────
+// ─── Card ─────────────────────────────────────────────────────────────────────
 
 function SolicitudCard({
   solicitud,
   onAceptar,
   onCancelar,
-  loading,
+  loadingId,
 }: {
   solicitud: TutoringRequest;
   onAceptar: (id: string) => void;
   onCancelar: (id: string) => void;
-  loading: boolean;
+  loadingId: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isPendiente = solicitud.status === "pendiente";
+  const isLoading   = loadingId === solicitud.id;
 
   const fecha = new Date(solicitud.preferred_date).toLocaleDateString("es-CO", {
     weekday: "short", day: "numeric", month: "short", year: "numeric",
   });
-
-  const hora = (() => {
-    if (!solicitud.preferred_time) return "";
-    try {
-      const d = solicitud.preferred_time.includes("T")
-        ? new Date(solicitud.preferred_time)
-        : new Date(`1970-01-01T${solicitud.preferred_time}`);
-      return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
-    } catch { return ""; }
-  })();
-
+  const hora     = formatTime(solicitud.preferred_time);
   const iniciales = solicitud.student.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("");
+  const cfg       = estadoConfig[solicitud.status] ?? { label: solicitud.status, className: "bg-gray-100 text-gray-600" };
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-[10px] overflow-hidden">
+    <div className={cn(
+      "bg-white border rounded-[10px] overflow-hidden transition-shadow",
+      isPendiente ? "border-[#FFC100]/60 shadow-sm" : "border-[#E5E7EB]"
+    )}>
+      {/* Fila principal */}
       <div className="p-4 flex items-start gap-3">
+        {/* Avatar */}
         <div className="h-9 w-9 flex-shrink-0 rounded-[9px] bg-[#E8F0FE] text-[#1A5EB8] flex items-center justify-center text-[11px] font-bold">
           {iniciales}
         </div>
 
+        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13px] font-semibold text-[#0F2547]">{solicitud.student.full_name}</span>
-            <EstadoBadge estado={solicitud.status} />
+            <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold", cfg.className)}>
+              {cfg.label}
+            </span>
           </div>
           <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-500 flex-wrap">
             <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" />{solicitud.subject.name}</span>
-            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{fecha}{hora && ` · ${hora}`}</span>
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />{fecha}{hora && ` · ${hora}`}
+            </span>
           </div>
+
+          {/* Botones de acción — siempre visibles para pendientes */}
+          {isPendiente && (
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => onAceptar(solicitud.id)}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] bg-[#0F2547] text-white text-[12px] font-semibold hover:bg-[#1a3a6b] disabled:opacity-50 transition-colors"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                {isLoading ? "Procesando..." : "Aceptar"}
+              </button>
+              <button
+                onClick={() => onCancelar(solicitud.id)}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] border border-[#E5E7EB] text-red-600 text-[12px] font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                {isLoading ? "Procesando..." : "Rechazar"}
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Expand toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
           className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors flex-shrink-0"
@@ -92,70 +114,48 @@ function SolicitudCard({
         </button>
       </div>
 
+      {/* Detalle expandido */}
       {expanded && (
-        <div className="px-4 pb-4 pt-3 border-t border-[#F3F4F6] space-y-3">
-          <div className="grid grid-cols-2 gap-3 text-[12px]">
-            <div>
-              <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Estudiante</p>
-              <p className="text-gray-700">{solicitud.student.full_name}</p>
-              <p className="text-gray-400">{solicitud.student.email}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Materia</p>
-              <p className="text-gray-700">{solicitud.subject.name}</p>
-              <p className="text-gray-400">{solicitud.subject.code}</p>
-            </div>
-            {solicitud.topic && (
-              <div className="col-span-2">
-                <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Tema</p>
-                <p className="text-gray-700">{solicitud.topic}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Modalidad</p>
-              <p className="text-gray-700 capitalize">{solicitud.modality}</p>
-            </div>
-            <div>
-              <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Fecha preferida</p>
-              <p className="text-gray-700">{fecha}{hora && ` · ${hora}`}</p>
-            </div>
+        <div className="px-4 pb-4 pt-3 border-t border-[#F3F4F6] grid grid-cols-2 gap-3 text-[12px]">
+          <div>
+            <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Estudiante</p>
+            <p className="text-gray-700">{solicitud.student.full_name}</p>
+            <p className="text-gray-400">{solicitud.student.email}</p>
           </div>
-
-          {isPendiente && (
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => onAceptar(solicitud.id)}
-                disabled={loading}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] bg-[#0F2547] text-white text-[12px] font-semibold hover:bg-[#1a3a6b] disabled:opacity-50 transition-colors"
-              >
-                <CheckCircle className="h-3.5 w-3.5" />
-                {loading ? "Procesando..." : "Aceptar"}
-              </button>
-              <button
-                onClick={() => onCancelar(solicitud.id)}
-                disabled={loading}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[8px] border border-[#E5E7EB] text-red-600 text-[12px] font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors"
-              >
-                <XCircle className="h-3.5 w-3.5" />
-                {loading ? "Procesando..." : "Cancelar"}
-              </button>
+          <div>
+            <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Materia</p>
+            <p className="text-gray-700">{solicitud.subject.name}</p>
+            <p className="text-gray-400">{solicitud.subject.code}</p>
+          </div>
+          {solicitud.topic && (
+            <div className="col-span-2">
+              <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Tema</p>
+              <p className="text-gray-700">{solicitud.topic}</p>
             </div>
           )}
+          <div>
+            <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Modalidad</p>
+            <p className="text-gray-700 capitalize">{solicitud.modality}</p>
+          </div>
+          <div>
+            <p className="text-gray-400 uppercase tracking-wide text-[10px] font-semibold mb-0.5">Fecha preferida</p>
+            <p className="text-gray-700">{fecha}{hora && ` · ${hora}`}</p>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
+// ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function SolicitudesPage() {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab]   = useState<TabKey>("todas");
+  const { user }  = useAuth();
+  const [activeTab, setActiveTab]     = useState<TabKey>("pendiente");
   const [solicitudes, setSolicitudes] = useState<TutoringRequest[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [actionId, setActionId]     = useState<string | null>(null);
-  const [error, setError]           = useState<string | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [loadingId, setLoadingId]     = useState<string | null>(null);
+  const [error, setError]             = useState<string | null>(null);
 
   const fetchSolicitudes = useCallback(async () => {
     if (!user?.id) return;
@@ -174,26 +174,26 @@ export default function SolicitudesPage() {
   useEffect(() => { fetchSolicitudes(); }, [fetchSolicitudes]);
 
   const handleAceptar = async (id: string) => {
-    setActionId(id);
+    setLoadingId(id);
     try {
       await acceptRequest(id);
       await fetchSolicitudes();
     } catch (err) {
       alert(getErrorMessage(err, "No se pudo aceptar la solicitud"));
     } finally {
-      setActionId(null);
+      setLoadingId(null);
     }
   };
 
   const handleCancelar = async (id: string) => {
-    setActionId(id);
+    setLoadingId(id);
     try {
       await cancelRequest(id);
       await fetchSolicitudes();
     } catch (err) {
-      alert(getErrorMessage(err, "No se pudo cancelar la solicitud"));
+      alert(getErrorMessage(err, "No se pudo rechazar la solicitud"));
     } finally {
-      setActionId(null);
+      setLoadingId(null);
     }
   };
 
@@ -210,9 +210,9 @@ export default function SolicitudesPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-[10px]">
         {[
-          { label: "Pendientes",  status: "pendiente", icon: Clock,        style: "bg-[#FFF3CC] text-[#B8860B]" },
-          { label: "Aceptadas",   status: "aceptada",  icon: CheckCircle,  style: "bg-[#E6F4EA] text-[#1E7E34]" },
-          { label: "Canceladas",  status: "cancelada", icon: XCircle,      style: "bg-red-50 text-red-600" },
+          { label: "Pendientes", status: "pendiente", icon: Clock,       style: "bg-[#FFF3CC] text-[#B8860B]" },
+          { label: "Aceptadas",  status: "aceptada",  icon: CheckCircle, style: "bg-[#E6F4EA] text-[#1E7E34]" },
+          { label: "Canceladas", status: "cancelada", icon: XCircle,     style: "bg-red-50 text-red-600" },
         ].map(({ label, status, icon: Icon, style }) => (
           <div key={status} className="bg-white border border-[#E5E7EB] rounded-[10px] p-3 flex items-center gap-3">
             <div className={cn("h-8 w-8 rounded-[8px] flex items-center justify-center flex-shrink-0", style)}>
@@ -255,7 +255,7 @@ export default function SolicitudesPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title={activeTab === "todas" ? "Sin solicitudes" : `Sin solicitudes ${activeTab}s`}
+          title={activeTab === "pendiente" ? "Sin solicitudes pendientes" : "Sin solicitudes"}
           description="No hay solicitudes en esta categoría por ahora."
         />
       ) : (
@@ -266,7 +266,7 @@ export default function SolicitudesPage() {
               solicitud={s}
               onAceptar={handleAceptar}
               onCancelar={handleCancelar}
-              loading={actionId === s.id}
+              loadingId={loadingId}
             />
           ))}
         </div>
