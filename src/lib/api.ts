@@ -597,7 +597,7 @@ export async function getRequests(params?: {
   if (params?.limit)      qs.set("limit",      String(params.limit));
   if (params?.offset)     qs.set("offset",     String(params.offset));
 
-  const path = `/requests${qs.toString() ? `?${qs}` : ""}`;
+  const path = `/tutorias${qs.toString() ? `?${qs}` : ""}`;
   const response = await apiRequest<unknown>(path, {
     authRequired: true,
     defaultErrorMessage: "Error al obtener solicitudes",
@@ -610,7 +610,7 @@ export async function getRequests(params?: {
 }
 
 export async function acceptRequest(id: string): Promise<void> {
-  await apiRequest<unknown>(`/requests/${id}/accept`, {
+  await apiRequest<unknown>(`/tutorias/${id}/accept`, {
     method: "PATCH",
     authRequired: true,
     headers: { "Content-Type": "application/json" },
@@ -620,7 +620,7 @@ export async function acceptRequest(id: string): Promise<void> {
 }
 
 export async function cancelRequest(id: string): Promise<void> {
-  await apiRequest<unknown>(`/requests/${id}/cancel`, {
+  await apiRequest<unknown>(`/tutorias/${id}/cancel`, {
     method: "PATCH",
     authRequired: true,
     headers: { "Content-Type": "application/json" },
