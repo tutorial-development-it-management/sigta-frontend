@@ -531,6 +531,106 @@ export async function logoutFromBackend() {
   });
 }
 
+// ─── Subjects ────────────────────────────────────────────────────────────────
+
+export interface Subject {
+  id: number;
+  code: string;
+  name: string;
+  program: string | null;
+}
+
+export async function getSubjects(): Promise<Subject[]> {
+  const response = await apiRequest<unknown>("/subjects", {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener materias",
+  });
+
+  const data = unwrapData<{ items?: Subject[] } | Subject[]>(response);
+  if (Array.isArray(data)) return data;
+  return data?.items ?? [];
+}
+
+// ─── Tutoring Requests ────────────────────────────────────────────────────────
+
+export interface TutoringRequestParty {
+  id: string;
+  full_name: string;
+  email: string;
+}
+
+export interface TutoringRequestSubject {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface TutoringRequest {
+  id: string;
+  status: string;
+  modality: string;
+  topic: string | null;
+  preferred_date: string;
+  preferred_time: string;
+  created_at: string;
+  student: TutoringRequestParty;
+  tutor: TutoringRequestParty | null;
+  subject: TutoringRequestSubject;
+}
+
+export interface TutoringRequestsResponse {
+  items: TutoringRequest[];
+  total: number;
+}
+
+export async function getRequests(params?: {
+  status?: string;
+  tutor_id?: string;
+  student_id?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<TutoringRequestsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.status)     qs.set("status",     params.status);
+  if (params?.tutor_id)   qs.set("tutor_id",   params.tutor_id);
+  if (params?.student_id) qs.set("student_id", params.student_id);
+  if (params?.limit)      qs.set("limit",      String(params.limit));
+  if (params?.offset)     qs.set("offset",     String(params.offset));
+
+  const path = `/requests${qs.toString() ? `?${qs}` : ""}`;
+  const response = await apiRequest<unknown>(path, {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener solicitudes",
+  });
+
+  const envelope = response as BackendEnvelope<{ items?: TutoringRequest[] }>;
+  const data = unwrapData<{ items?: TutoringRequest[] }>(response);
+  const items = data?.items ?? [];
+  return { items, total: envelope.meta?.total ?? items.length };
+}
+
+export async function acceptRequest(id: string): Promise<void> {
+  await apiRequest<unknown>(`/requests/${id}/accept`, {
+    method: "PATCH",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+    defaultErrorMessage: "Error al aceptar solicitud",
+  });
+}
+
+export async function cancelRequest(id: string): Promise<void> {
+  await apiRequest<unknown>(`/requests/${id}/cancel`, {
+    method: "PATCH",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+    defaultErrorMessage: "Error al cancelar solicitud",
+  });
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
 export async function userList(limit = 20, offset = 0): Promise<PaginatedUsersResponse> {
   const response = await apiRequest<unknown>(`/usuarios?limit=${limit}&offset=${offset}`, {
     authRequired: true,
