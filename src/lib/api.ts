@@ -678,6 +678,136 @@ export async function rejectRequest(id: string): Promise<void> {
   });
 }
 
+// ─── Sessions ─────────────────────────────────────────────────────────────────
+
+export interface SessionBitacora {
+  id: number;
+  temas_tratados: string | null;
+  logros: string | null;
+  compromisos: string | null;
+  registrado_en: string;
+}
+
+export interface SessionFeedback {
+  id: number;
+  calificacion: number;
+  comentario: string | null;
+  registrado_en: string;
+}
+
+export interface TutoringSession {
+  id: string;
+  estado: string;
+  modalidad: string;
+  lugar_o_enlace: string | null;
+  fecha_hora_inicio: string;
+  fecha_hora_fin: string;
+  tutor: { id: string; full_name: string; email: string };
+  estudiante: { id: string; full_name: string; email: string };
+  materia: { id: number; codigo: string; nombre: string };
+  bitacoras: SessionBitacora[];
+  retroalimentaciones: SessionFeedback[];
+}
+
+export interface SessionsResponse {
+  items: TutoringSession[];
+  total: number;
+}
+
+export async function getSessions(params?: {
+  tutor_id?: string;
+  student_id?: string;
+  estado?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<SessionsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.tutor_id)   qs.set("tutor_id",   params.tutor_id);
+  if (params?.student_id) qs.set("student_id", params.student_id);
+  if (params?.estado)     qs.set("estado",     params.estado);
+  if (params?.limit)      qs.set("limit",      String(params.limit));
+  if (params?.offset)     qs.set("offset",     String(params.offset));
+
+  const path = `/sesiones${qs.toString() ? `?${qs}` : ""}`;
+  const response = await apiRequest<unknown>(path, {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener sesiones",
+  });
+
+  const envelope = response as BackendEnvelope<{ items?: TutoringSession[] }>;
+  const data = unwrapData<{ items?: TutoringSession[] }>(response);
+  const items = data?.items ?? [];
+  return { items, total: envelope.meta?.total ?? items.length };
+}
+
+export interface CompletarSessionInput {
+  temas_tratados: string;
+  logros?: string;
+  compromisos?: string;
+}
+
+export async function completarSession(id: string, input: CompletarSessionInput): Promise<TutoringSession> {
+  const response = await apiRequest<unknown>(`/sesiones/${id}/completar`, {
+    method: "PATCH",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    defaultErrorMessage: "Error al registrar la sesión",
+  });
+  const data = unwrapData<TutoringSession>(response);
+  if (!data) throw new ApiError("No se recibió la sesión actualizada", 500);
+  return data;
+}
+
+export interface FeedbackInput {
+  calificacion: number;
+  comentario?: string;
+}
+
+export async function submitFeedback(sessionId: string, input: FeedbackInput): Promise<void> {
+  await apiRequest<unknown>(`/sesiones/${sessionId}/feedback`, {
+    method: "POST",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    defaultErrorMessage: "Error al enviar la evaluación",
+  });
+}
+
+// ─── Metrics ──────────────────────────────────────────────────────────────────
+
+export interface MetricsResponse {
+  solicitudes: {
+    total: number;
+    pendientes: number;
+    aceptadas: number;
+    canceladas: number;
+    rechazadas: number;
+  };
+  sesiones_realizadas: number;
+  promedio_evaluacion: number | null;
+  top_tutores: { id: string; nombre: string; sesiones: number }[];
+  top_materias: { id: number; nombre: string; codigo: string; solicitudes: number }[];
+}
+
+export async function getMetrics(params?: {
+  tutor_id?: string;
+  subject_id?: number;
+}): Promise<MetricsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.tutor_id)   qs.set("tutor_id",   params.tutor_id);
+  if (params?.subject_id) qs.set("subject_id", String(params.subject_id));
+
+  const path = `/metricas${qs.toString() ? `?${qs}` : ""}`;
+  const response = await apiRequest<unknown>(path, {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener métricas",
+  });
+  const data = unwrapData<MetricsResponse>(response);
+  if (!data) throw new ApiError("No se recibieron métricas", 500);
+  return data;
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export async function userList(limit = 20, offset = 0): Promise<PaginatedUsersResponse> {

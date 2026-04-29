@@ -55,30 +55,27 @@ export function Sidebar({ className }: SidebarProps) {
       break;
     case "student":
       navigation = [
-        { name: "Inicio", href: "/dashboard/student", icon: Home, current: pathname === "/dashboard/student" },
-        { name: "Mis Tutorías", href: "/dashboard/student/tutorias", icon: BookOpen, current: pathname === "/dashboard/student/tutorias" },
-        // Future
-        { name: "Calendario", href: "#", icon: Calendar, current: false, disabled: true },
-        { name: "Mi Perfil", href: "#", icon: Users, current: false, disabled: true },
+        { name: "Inicio",       href: "/dashboard/student",           icon: Home,          current: pathname === "/dashboard/student" },
+        { name: "Mis Tutorías", href: "/dashboard/student/tutorias",  icon: BookOpen,      current: pathname.startsWith("/dashboard/student/tutorias") },
+        { name: "Calendario",   href: "/dashboard/student/sesiones",  icon: Calendar,      current: pathname === "/dashboard/student/sesiones" },
+        { name: "Mi Perfil",    href: "#",                            icon: Users,         current: false, disabled: true },
       ];
       break;
     case "tutor":
       navigation = [
-        { name: "Inicio", href: "/dashboard/tutor", icon: Home, current: pathname === "/dashboard/tutor" },
-        { name: "Solicitudes", href: "/dashboard/tutor/solicitudes", icon: ClipboardList, current: pathname === "/dashboard/tutor/solicitudes" },
-        // Future
-        { name: "Bitácora", href: "#", icon: FileText, current: false, disabled: true },
-        { name: "Mi Perfil", href: "#", icon: Users, current: false, disabled: true },
+        { name: "Inicio",      href: "/dashboard/tutor",             icon: Home,          current: pathname === "/dashboard/tutor" },
+        { name: "Solicitudes", href: "/dashboard/tutor/solicitudes",  icon: ClipboardList, current: pathname === "/dashboard/tutor/solicitudes" },
+        { name: "Mis Sesiones", href: "/dashboard/tutor/sesiones",   icon: Calendar,      current: pathname === "/dashboard/tutor/sesiones" },
+        { name: "Mi Perfil",   href: "#",                            icon: Users,         current: false, disabled: true },
       ];
       break;
     case "coordinator":
-        navigation = [
-            { name: "Inicio", href: "/dashboard/coordinator", icon: Home, current: pathname === "/dashboard/coordinator" },
-            { name: "Tutorías", href: "#", icon: Calendar, current: false, disabled: true },
-            { name: "Reportes", href: "#", icon: BarChart, current: false, disabled: true },
-            { name: "Configuración", href: "#", icon: Settings, current: false, disabled: true },
-        ];
-        break;
+      navigation = [
+        { name: "Dashboard",   href: "/dashboard/coordinator",        icon: Home,          current: pathname === "/dashboard/coordinator" },
+        { name: "Métricas",    href: "/dashboard/coordinator",        icon: BarChart,      current: pathname === "/dashboard/coordinator" },
+        { name: "Configuración", href: "#",                          icon: Settings,      current: false, disabled: true },
+      ];
+      break;
   }
 
   const mainItems = navigation.filter((item) => !item.disabled);
