@@ -55,6 +55,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const SESSION_COOKIE_NAME = "firebase_session";
+const ROLE_COOKIE_NAME    = "sigta_role";
 const GOOGLE_AUTH_INTENT_KEY = "sigta.auth.google.intent";
 
 function setCookie(name: string, value: string, maxAgeSeconds: number) {
@@ -65,13 +66,15 @@ function clearCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
 }
 
-function setSessionCookie(active: boolean) {
-  if (active) {
-    setCookie(SESSION_COOKIE_NAME, "1", 60 * 60 * 24 * 7);
+function setSessionCookie(active: boolean, role?: string) {
+  if (active && role) {
+    setCookie(SESSION_COOKIE_NAME, "1",   60 * 60 * 24 * 7);
+    setCookie(ROLE_COOKIE_NAME,    role,  60 * 60 * 24 * 7);
     return;
   }
 
   clearCookie(SESSION_COOKIE_NAME);
+  clearCookie(ROLE_COOKIE_NAME);
 }
 
 function setGoogleAuthIntent(active: boolean) {
@@ -133,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setFirebaseUser(null);
     setIdToken(null);
     clearApiAccessToken();
-    setSessionCookie(false);
+    setSessionCookie(false, undefined);
   }, []);
 
   const syncProfile = useCallback(async (forceRefreshToken = false) => {
@@ -142,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(profile);
     setRole(profile.role_name);
-    setSessionCookie(true);
+    setSessionCookie(true, profile.role_name);
 
     return profile;
   }, []);

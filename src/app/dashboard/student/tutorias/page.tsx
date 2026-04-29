@@ -20,17 +20,19 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 const STATUS_LABEL: Record<string, string> = {
-  pendiente: "Pendiente",
-  aceptada:  "Confirmada",
-  realizada: "Realizada",
-  cancelada: "Cancelada",
+  pendiente:  "Pendiente",
+  aceptada:   "Confirmada",
+  realizada:  "Realizada",
+  cancelada:  "Cancelada",
+  rechazada:  "Rechazada",
 };
 
 const STATUS_STYLE: Record<string, string> = {
-  pendiente: "bg-yellow-100 text-yellow-800",
-  aceptada:  "bg-blue-100 text-blue-800",
-  realizada: "bg-green-100 text-green-800",
-  cancelada: "bg-red-100 text-red-700",
+  pendiente:  "bg-yellow-100 text-yellow-800",
+  aceptada:   "bg-blue-100 text-blue-800",
+  realizada:  "bg-green-100 text-green-800",
+  cancelada:  "bg-red-100 text-red-700",
+  rechazada:  "bg-orange-100 text-orange-700",
 };
 
 export default function MisTutoriasPage() {

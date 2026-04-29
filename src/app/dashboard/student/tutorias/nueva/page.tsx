@@ -16,7 +16,7 @@ import { BookOpen, User, Calendar, Clock, ArrowLeft, CheckCircle } from "lucide-
 const MODALITIES = [
   { value: "presencial", label: "Presencial" },
   { value: "virtual",    label: "Virtual" },
-  { value: "hibrida",    label: "Híbrida" },
+  { value: "híbrida",    label: "Híbrida" },
 ];
 
 function getLocalDateString() {

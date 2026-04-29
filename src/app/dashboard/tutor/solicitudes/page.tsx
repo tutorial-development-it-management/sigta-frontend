@@ -17,10 +17,11 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 const estadoConfig: Record<string, { label: string; className: string }> = {
-  pendiente: { label: "Pendiente", className: "bg-[#FFF3CC] text-[#B8860B]" },
-  aceptada:  { label: "Aceptada",  className: "bg-[#E6F4EA] text-[#1E7E34]" },
-  cancelada: { label: "Cancelada", className: "bg-red-50 text-red-600" },
-  realizada: { label: "Realizada", className: "bg-gray-100 text-gray-600" },
+  pendiente:  { label: "Pendiente",  className: "bg-[#FFF3CC] text-[#B8860B]" },
+  aceptada:   { label: "Aceptada",   className: "bg-[#E6F4EA] text-[#1E7E34]" },
+  cancelada:  { label: "Cancelada",  className: "bg-red-50 text-red-600" },
+  rechazada:  { label: "Rechazada",  className: "bg-orange-50 text-orange-700" },
+  realizada:  { label: "Realizada",  className: "bg-gray-100 text-gray-600" },
 };
 
 function formatTime(timeStr: string): string {
