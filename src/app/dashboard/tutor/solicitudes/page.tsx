@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ClipboardList, CheckCircle, XCircle, Clock, BookOpen, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/components/ui/Button";
-import { getRequests, acceptRequest, cancelRequest, TutoringRequest, getErrorMessage } from "@/lib/api";
+import { getRequests, acceptRequest, rejectRequest, TutoringRequest, getErrorMessage } from "@/lib/api";
 
 type TabKey = "todas" | "pendiente" | "aceptada" | "cancelada";
 
@@ -188,7 +188,7 @@ export default function SolicitudesPage() {
   const handleCancelar = async (id: string) => {
     setLoadingId(id);
     try {
-      await cancelRequest(id);
+      await rejectRequest(id);
       await fetchSolicitudes();
     } catch (err) {
       alert(getErrorMessage(err, "No se pudo rechazar la solicitud"));

@@ -668,6 +668,16 @@ export async function cancelRequest(id: string): Promise<void> {
   });
 }
 
+export async function rejectRequest(id: string): Promise<void> {
+  await apiRequest<unknown>(`/tutorias/${id}/reject`, {
+    method: "PATCH",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+    defaultErrorMessage: "Error al rechazar solicitud",
+  });
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export async function userList(limit = 20, offset = 0): Promise<PaginatedUsersResponse> {
