@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Layers, AlertCircle, CheckCircle, Eye, EyeOff } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
+  ?? (process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api` : "http://localhost:3000/api");
 
 function ResetForm() {
   const router       = useRouter();

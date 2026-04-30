@@ -970,6 +970,33 @@ export async function assignTutorToRequest(requestId: string, tutorId: string): 
   });
 }
 
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export interface AppNotification {
+  id: string;
+  tipo: string;
+  asunto: string;
+  leida: boolean;
+  creado_en: string;
+}
+
+export async function getNotifications(): Promise<{ items: AppNotification[]; unread: number }> {
+  const response = await apiRequest<unknown>("/notificaciones", {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener notificaciones",
+  });
+  const data = unwrapData<{ items?: AppNotification[]; unread?: number }>(response);
+  return { items: data?.items ?? [], unread: data?.unread ?? 0 };
+}
+
+export async function markNotificationsRead(): Promise<void> {
+  await apiRequest<unknown>("/notificaciones/mark-read", {
+    method: "PATCH",
+    authRequired: true,
+    defaultErrorMessage: "Error al marcar notificaciones",
+  });
+}
+
 // Backward-compatible exports for existing UI wiring.
 export type RegisterPayload = RegisterUserInput;
 export const register = registerUser;
