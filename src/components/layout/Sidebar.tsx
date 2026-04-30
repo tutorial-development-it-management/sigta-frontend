@@ -46,34 +46,32 @@ export function Sidebar({ className }: SidebarProps) {
   switch (role) {
     case "admin":
       navigation = [
-        { name: "Dashboard", href: "/dashboard/admin", icon: Home, current: pathname === "/dashboard/admin" },
-        { name: "Usuarios", href: "/dashboard/admin/users", icon: Users, current: pathname === "/dashboard/admin/users" },
-        // Future
-        { name: "Reportes", href: "#", icon: BarChart, current: false, disabled: true },
-        { name: "Configuración", href: "#", icon: Settings, current: false, disabled: true },
+        { name: "Dashboard",   href: "/dashboard/admin",        icon: Home,          current: pathname === "/dashboard/admin" },
+        { name: "Usuarios",    href: "/dashboard/admin/users",  icon: Users,         current: pathname === "/dashboard/admin/users" },
+        { name: "Mi Perfil",   href: "/dashboard/profile",      icon: Settings,      current: pathname === "/dashboard/profile" },
       ];
       break;
     case "student":
       navigation = [
-        { name: "Inicio",       href: "/dashboard/student",           icon: Home,          current: pathname === "/dashboard/student" },
-        { name: "Mis Tutorías", href: "/dashboard/student/tutorias",  icon: BookOpen,      current: pathname.startsWith("/dashboard/student/tutorias") },
-        { name: "Calendario",   href: "/dashboard/student/sesiones",  icon: Calendar,      current: pathname === "/dashboard/student/sesiones" },
-        { name: "Mi Perfil",    href: "#",                            icon: Users,         current: false, disabled: true },
+        { name: "Inicio",       href: "/dashboard/student",          icon: Home,          current: pathname === "/dashboard/student" },
+        { name: "Mis Tutorías", href: "/dashboard/student/tutorias", icon: BookOpen,      current: pathname.startsWith("/dashboard/student/tutorias") },
+        { name: "Calendario",   href: "/dashboard/student/sesiones", icon: Calendar,      current: pathname === "/dashboard/student/sesiones" },
+        { name: "Mi Perfil",    href: "/dashboard/profile",          icon: Users,         current: pathname === "/dashboard/profile" },
       ];
       break;
     case "tutor":
       navigation = [
-        { name: "Inicio",          href: "/dashboard/tutor",                 icon: Home,          current: pathname === "/dashboard/tutor" },
-        { name: "Solicitudes",     href: "/dashboard/tutor/solicitudes",      icon: ClipboardList, current: pathname === "/dashboard/tutor/solicitudes" },
-        { name: "Mis Sesiones",    href: "/dashboard/tutor/sesiones",         icon: Calendar,      current: pathname === "/dashboard/tutor/sesiones" },
-        { name: "Disponibilidad",  href: "/dashboard/tutor/disponibilidad",   icon: Settings,      current: pathname === "/dashboard/tutor/disponibilidad" },
+        { name: "Inicio",         href: "/dashboard/tutor",                icon: Home,          current: pathname === "/dashboard/tutor" },
+        { name: "Solicitudes",    href: "/dashboard/tutor/solicitudes",     icon: ClipboardList, current: pathname === "/dashboard/tutor/solicitudes" },
+        { name: "Mis Sesiones",   href: "/dashboard/tutor/sesiones",        icon: Calendar,      current: pathname === "/dashboard/tutor/sesiones" },
+        { name: "Disponibilidad", href: "/dashboard/tutor/disponibilidad",  icon: FileText,      current: pathname === "/dashboard/tutor/disponibilidad" },
+        { name: "Mi Perfil",      href: "/dashboard/profile",               icon: Users,         current: pathname === "/dashboard/profile" },
       ];
       break;
     case "coordinator":
       navigation = [
-        { name: "Dashboard",   href: "/dashboard/coordinator",        icon: Home,          current: pathname === "/dashboard/coordinator" },
-        { name: "Métricas",    href: "/dashboard/coordinator",        icon: BarChart,      current: pathname === "/dashboard/coordinator" },
-        { name: "Configuración", href: "#",                          icon: Settings,      current: false, disabled: true },
+        { name: "Dashboard", href: "/dashboard/coordinator", icon: Home,    current: pathname === "/dashboard/coordinator" },
+        { name: "Mi Perfil", href: "/dashboard/profile",     icon: Users,   current: pathname === "/dashboard/profile" },
       ];
       break;
   }

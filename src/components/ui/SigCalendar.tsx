@@ -1,15 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useMemo, useRef } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin   from "@fullcalendar/daygrid";
+import timeGridPlugin  from "@fullcalendar/timegrid";
+import listPlugin      from "@fullcalendar/list";
+import interactionPlugin from "@fullcalendar/interaction";
+import { useMemo } from "react";
 import { TutoringSession } from "@/lib/api";
-import "@fullcalendar/core";
-
-const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false });
-const dayGridPlugin  = () => import("@fullcalendar/daygrid");
-const timeGridPlugin = () => import("@fullcalendar/timegrid");
-const listPlugin     = () => import("@fullcalendar/list");
-const interactPlugin = () => import("@fullcalendar/interaction");
 
 const STATUS_COLOR: Record<string, string> = {
   programada: "#1A5EB8",
@@ -24,15 +21,14 @@ interface Props {
 }
 
 export function SigCalendar({ sessions, role, onEventClick }: Props) {
-  const calRef = useRef<any>(null);
-
   const events = useMemo(
     () =>
       sessions.map((s) => ({
         id:              s.id,
-        title:           role === "tutor"
-          ? `${s.estudiante.full_name} — ${s.materia.nombre}`
-          : `${s.materia.nombre} (${s.tutor.full_name})`,
+        title:
+          role === "tutor"
+            ? `${s.estudiante.full_name} — ${s.materia.nombre}`
+            : `${s.materia.nombre} (${s.tutor.full_name})`,
         start:           s.fecha_hora_inicio,
         end:             s.fecha_hora_fin,
         backgroundColor: STATUS_COLOR[s.estado] ?? "#6B7280",
@@ -43,10 +39,9 @@ export function SigCalendar({ sessions, role, onEventClick }: Props) {
   );
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 [&_.fc-toolbar-title]:text-[15px] [&_.fc-toolbar-title]:font-bold [&_.fc-toolbar-title]:text-[#0F2547] [&_.fc-button]:!bg-[#0F2547] [&_.fc-button]:!border-[#0F2547] [&_.fc-button-active]:!bg-[#FFC100] [&_.fc-button-active]:!border-[#FFC100] [&_.fc-button-active]:!text-[#0F2547] [&_.fc-daygrid-event]:cursor-pointer">
+    <div className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 [&_.fc-toolbar-title]:text-[15px] [&_.fc-toolbar-title]:font-bold [&_.fc-toolbar-title]:text-[#0F2547] [&_.fc-button-primary]:!bg-[#0F2547] [&_.fc-button-primary]:!border-[#0F2547] [&_.fc-button-primary.fc-button-active]:!bg-[#FFC100] [&_.fc-button-primary.fc-button-active]:!border-[#FFC100] [&_.fc-button-primary.fc-button-active]:!text-[#0F2547] [&_.fc-daygrid-event]:cursor-pointer [&_.fc-event-title]:text-[11px]">
       <FullCalendar
-        ref={calRef}
-        plugins={[dayGridPlugin(), timeGridPlugin(), listPlugin(), interactPlugin()]}
+        plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         locale="es"
         headerToolbar={{
@@ -54,23 +49,13 @@ export function SigCalendar({ sessions, role, onEventClick }: Props) {
           center: "title",
           right:  "dayGridMonth,timeGridWeek,listWeek",
         }}
-        buttonText={{
-          today:        "Hoy",
-          month:        "Mes",
-          week:         "Semana",
-          list:         "Lista",
-        }}
+        buttonText={{ today: "Hoy", month: "Mes", week: "Semana", list: "Lista" }}
         events={events}
         height="auto"
         eventClick={(info) => {
           const session = info.event.extendedProps.session as TutoringSession;
           onEventClick?.(session);
         }}
-        eventContent={(arg) => (
-          <div className="text-[11px] font-medium px-1 py-0.5 truncate">
-            {arg.event.title}
-          </div>
-        )}
         noEventsText="No hay sesiones en este periodo"
       />
     </div>
