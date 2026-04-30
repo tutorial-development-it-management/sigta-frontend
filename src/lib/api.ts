@@ -809,10 +809,14 @@ export interface MetricsResponse {
 export async function getMetrics(params?: {
   tutor_id?: string;
   subject_id?: number;
+  from?: string;
+  to?: string;
 }): Promise<MetricsResponse> {
   const qs = new URLSearchParams();
   if (params?.tutor_id)   qs.set("tutor_id",   params.tutor_id);
   if (params?.subject_id) qs.set("subject_id", String(params.subject_id));
+  if (params?.from)       qs.set("from",       params.from);
+  if (params?.to)         qs.set("to",         params.to);
 
   const path = `/metricas${qs.toString() ? `?${qs}` : ""}`;
   const response = await apiRequest<unknown>(path, {
@@ -890,6 +894,80 @@ export async function roleChange(
   return {
     message: responseMessage,
   };
+}
+
+// ─── Availability ────────────────────────────────────────────────────────────
+
+export interface AvailabilitySlot {
+  id: number;
+  dia_semana: number;
+  dia_nombre: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+}
+
+export async function getMyAvailability(): Promise<AvailabilitySlot[]> {
+  const response = await apiRequest<unknown>("/disponibilidad", {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener disponibilidad",
+  });
+  const data = unwrapData<{ items?: AvailabilitySlot[] }>(response);
+  return data?.items ?? [];
+}
+
+export async function getTutorAvailability(tutorId: string): Promise<AvailabilitySlot[]> {
+  const response = await apiRequest<unknown>(`/disponibilidad/tutor/${tutorId}`, {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener disponibilidad",
+  });
+  const data = unwrapData<{ items?: AvailabilitySlot[] }>(response);
+  return data?.items ?? [];
+}
+
+export async function addAvailabilitySlot(input: {
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+}): Promise<AvailabilitySlot> {
+  const response = await apiRequest<unknown>("/disponibilidad", {
+    method: "POST",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    defaultErrorMessage: "Error al agregar franja horaria",
+  });
+  const data = unwrapData<AvailabilitySlot>(response);
+  if (!data) throw new ApiError("No se recibió la franja creada", 500);
+  return data;
+}
+
+export async function removeAvailabilitySlot(id: number): Promise<void> {
+  await apiRequest<unknown>(`/disponibilidad/${id}`, {
+    method: "DELETE",
+    authRequired: true,
+    defaultErrorMessage: "Error al eliminar franja horaria",
+  });
+}
+
+export async function getTutorRating(): Promise<number | null> {
+  const response = await apiRequest<unknown>("/metricas/tutor-rating", {
+    authRequired: true,
+    defaultErrorMessage: "Error al obtener calificación",
+  });
+  const data = unwrapData<{ promedio: number | null }>(response);
+  return data?.promedio ?? null;
+}
+
+export async function assignTutorToRequest(requestId: string, tutorId: string): Promise<void> {
+  await apiRequest<unknown>(`/tutorias/${requestId}/assign-tutor`, {
+    method: "PATCH",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tutor_id: tutorId }),
+    defaultErrorMessage: "Error al asignar tutor",
+  });
 }
 
 // Backward-compatible exports for existing UI wiring.

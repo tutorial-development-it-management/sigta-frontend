@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMetrics, getSubjects, userList, MetricsResponse, Subject, User, getErrorMessage } from "@/lib/api";
+import {
+  getMetrics, getSubjects, userList, getRequests, assignTutorToRequest,
+  MetricsResponse, Subject, User, TutoringRequest, getErrorMessage,
+} from "@/lib/api";
 import { StatCard } from "@/components/ui/StatCard";
 import {
-  Calendar, CheckCircle, Clock, XCircle, Star, BookOpen, Users, BarChart, TrendingUp,
+  Calendar, CheckCircle, Clock, XCircle, Star, BookOpen, Users, BarChart, TrendingUp, UserPlus,
 } from "lucide-react";
 
 const round1 = (n: number | null) =>
@@ -28,47 +31,68 @@ const StarRating = ({ value }: { value: number | null }) => {
 };
 
 export default function CoordinatorDashboard() {
-  const [metrics, setMetrics]     = useState<MetricsResponse | null>(null);
-  const [subjects, setSubjects]   = useState<Subject[]>([]);
-  const [tutors, setTutors]       = useState<User[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState<string | null>(null);
+  const [metrics, setMetrics]       = useState<MetricsResponse | null>(null);
+  const [subjects, setSubjects]     = useState<Subject[]>([]);
+  const [tutors, setTutors]         = useState<User[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  // Solicitudes sin tutor
+  const [pending, setPending]       = useState<TutoringRequest[]>([]);
+  const [assigning, setAssigning]   = useState<string | null>(null);
+  const [assignTutor, setAssignTutor] = useState<Record<string, string>>({});
 
   // Filtros
   const [filterTutor,   setFilterTutor]   = useState("");
   const [filterSubject, setFilterSubject] = useState("");
+  const [filterFrom,    setFilterFrom]    = useState("");
+  const [filterTo,      setFilterTo]      = useState("");
 
-  const loadMetrics = async (tutorId?: string, subjectId?: number) => {
+  const loadAll = async (tutorId?: string, subjectId?: number, from?: string, to?: string) => {
     setLoading(true);
     setError(null);
     try {
-      const [m, subs, usrs] = await Promise.all([
-        getMetrics({ tutor_id: tutorId, subject_id: subjectId }),
+      const [m, subs, usrs, pendReqs] = await Promise.all([
+        getMetrics({ tutor_id: tutorId, subject_id: subjectId, from, to }),
         subjects.length ? Promise.resolve(subjects) : getSubjects(),
         tutors.length   ? Promise.resolve(tutors)   : userList(100, 0).then((r) => r.items.filter((u) => u.role_name === "tutor")),
+        getRequests({ status: "pendiente", limit: 50 }).then((r) => r.items.filter((req) => !req.tutor)),
       ]);
       setMetrics(m);
+      setPending(pendReqs);
       if (!subjects.length) setSubjects(subs);
       if (!tutors.length)   setTutors(usrs);
     } catch (err) {
-      setError(getErrorMessage(err, "Error al cargar métricas"));
+      setError(getErrorMessage(err, "Error al cargar datos"));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadMetrics(); }, []); // eslint-disable-line
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line
 
   const handleFilter = () => {
     const tid = filterTutor   || undefined;
     const sid = filterSubject ? Number(filterSubject) : undefined;
-    loadMetrics(tid, sid);
+    loadAll(tid, sid, filterFrom || undefined, filterTo || undefined);
   };
 
   const handleReset = () => {
-    setFilterTutor("");
-    setFilterSubject("");
-    loadMetrics();
+    setFilterTutor(""); setFilterSubject(""); setFilterFrom(""); setFilterTo("");
+    loadAll();
+  };
+
+  const handleAssign = async (requestId: string) => {
+    const tutorId = assignTutor[requestId];
+    if (!tutorId) return;
+    setAssigning(requestId);
+    try {
+      await assignTutorToRequest(requestId, tutorId);
+      setPending((prev) => prev.filter((r) => r.id !== requestId));
+    } catch (err) {
+      alert(getErrorMessage(err, "Error al asignar tutor"));
+    } finally {
+      setAssigning(null);
+    }
   };
 
   const selectClass = "block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[12px] py-[9px] text-[12px] text-[#374151] outline-none focus:border-[#FFC100]";
@@ -101,6 +125,14 @@ export default function CoordinatorDashboard() {
               <option key={s.id} value={String(s.id)}>{s.name}</option>
             ))}
           </select>
+        </div>
+        <div className="flex-1 min-w-[130px]">
+          <label className="block mb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Desde</label>
+          <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className={selectClass} />
+        </div>
+        <div className="flex-1 min-w-[130px]">
+          <label className="block mb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Hasta</label>
+          <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className={selectClass} />
         </div>
         <div className="flex gap-2">
           <button onClick={handleFilter}
@@ -215,6 +247,45 @@ export default function CoordinatorDashboard() {
               )}
             </div>
           </div>
+          {/* Solicitudes sin tutor asignado */}
+          {pending.length > 0 && (
+            <div className="bg-white border border-[#E5E7EB] rounded-[10px] overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#E5E7EB] flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-[#0F2547]" />
+                <h2 className="text-[13px] font-bold text-[#0F2547]">Solicitudes pendientes sin tutor asignado</h2>
+                <span className="ml-auto bg-[#FFF3CC] text-[#B8860B] text-[11px] font-bold px-2 py-0.5 rounded-full">{pending.length}</span>
+              </div>
+              <div className="divide-y divide-[#F3F4F6]">
+                {pending.map((req) => (
+                  <div key={req.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-[#0F2547] truncate">{req.student.full_name}</p>
+                      <p className="text-[11px] text-gray-400">{req.subject.name} · {new Date(req.preferred_date).toLocaleDateString("es-CO")}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <select
+                        value={assignTutor[req.id] ?? ""}
+                        onChange={(e) => setAssignTutor((prev) => ({ ...prev, [req.id]: e.target.value }))}
+                        className="rounded-[7px] border border-[#D1D5DB] text-[12px] px-2 py-1.5 outline-none focus:border-[#FFC100]"
+                      >
+                        <option value="">Seleccionar tutor...</option>
+                        {tutors.map((t) => (
+                          <option key={String(t.id)} value={String(t.id)}>{t.first_name} {t.last_name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => handleAssign(req.id)}
+                        disabled={!assignTutor[req.id] || assigning === req.id}
+                        className="px-3 py-1.5 rounded-[7px] bg-[#0F2547] text-white text-[12px] font-semibold hover:bg-[#1a3a6b] disabled:opacity-50"
+                      >
+                        {assigning === req.id ? "Asignando..." : "Asignar"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       ) : null}
     </div>

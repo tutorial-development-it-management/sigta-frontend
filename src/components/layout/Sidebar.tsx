@@ -63,10 +63,10 @@ export function Sidebar({ className }: SidebarProps) {
       break;
     case "tutor":
       navigation = [
-        { name: "Inicio",      href: "/dashboard/tutor",             icon: Home,          current: pathname === "/dashboard/tutor" },
-        { name: "Solicitudes", href: "/dashboard/tutor/solicitudes",  icon: ClipboardList, current: pathname === "/dashboard/tutor/solicitudes" },
-        { name: "Mis Sesiones", href: "/dashboard/tutor/sesiones",   icon: Calendar,      current: pathname === "/dashboard/tutor/sesiones" },
-        { name: "Mi Perfil",   href: "#",                            icon: Users,         current: false, disabled: true },
+        { name: "Inicio",          href: "/dashboard/tutor",                 icon: Home,          current: pathname === "/dashboard/tutor" },
+        { name: "Solicitudes",     href: "/dashboard/tutor/solicitudes",      icon: ClipboardList, current: pathname === "/dashboard/tutor/solicitudes" },
+        { name: "Mis Sesiones",    href: "/dashboard/tutor/sesiones",         icon: Calendar,      current: pathname === "/dashboard/tutor/sesiones" },
+        { name: "Disponibilidad",  href: "/dashboard/tutor/disponibilidad",   icon: Settings,      current: pathname === "/dashboard/tutor/disponibilidad" },
       ];
       break;
     case "coordinator":

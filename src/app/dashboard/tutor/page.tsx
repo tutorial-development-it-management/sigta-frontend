@@ -3,14 +3,15 @@
 import { useAuth } from "@/context/AuthContext";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Inbox, CheckSquare, CalendarDays, Clock, CheckCircle } from "lucide-react";
+import { Inbox, CheckSquare, CalendarDays, Clock, CheckCircle, Star } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { getRequests, TutoringRequest } from "@/lib/api";
+import { getRequests, getTutorRating, TutoringRequest } from "@/lib/api";
 
 export default function TutorDashboard() {
   const { user } = useAuth();
   const [requests, setRequests]   = useState<TutoringRequest[]>([]);
+  const [avgRating, setAvgRating] = useState<number | null>(null);
   const [dateStr, setDateStr]     = useState("");
 
   useEffect(() => {
@@ -20,8 +21,12 @@ export default function TutorDashboard() {
   const fetchRequests = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const { items } = await getRequests({ tutor_id: String(user.id), limit: 20 });
+      const [{ items }, rating] = await Promise.all([
+        getRequests({ tutor_id: String(user.id), limit: 20 }),
+        getTutorRating().catch(() => null),
+      ]);
       setRequests(items);
+      setAvgRating(rating);
     } catch {
       // silencioso en dashboard
     }
@@ -48,10 +53,16 @@ export default function TutorDashboard() {
         <p className="mt-1 text-gray-500 capitalize text-sm">{dateStr || "Cargando..."} • Docente Tutor · Facultad de Ingeniería</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-4">
         <StatCard title="Solicitudes Pendientes" value={String(count("pendiente"))} icon={Inbox}        iconWrapperClassName="bg-[#FFF3CC] text-[#B8860B]" />
         <StatCard title="Aceptadas"              value={String(count("aceptada"))}  icon={CalendarDays} iconWrapperClassName="bg-[#E8F0FE] text-[#1A5EB8]" />
         <StatCard title="Sesiones Completadas"   value={String(count("realizada"))} icon={CheckSquare}  iconWrapperClassName="bg-[#E6F4EA] text-[#1E7E34]" />
+        <StatCard
+          title="Mi calificación"
+          value={avgRating != null ? `${avgRating}/5` : "—"}
+          icon={Star}
+          iconWrapperClassName="bg-[#FFF3CC] text-[#B8860B]"
+        />
       </div>
 
       <div>
