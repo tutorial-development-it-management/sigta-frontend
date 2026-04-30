@@ -746,6 +746,22 @@ export interface CompletarSessionInput {
   compromisos?: string;
 }
 
+export async function reprogramarSession(
+  id: string,
+  input: { fecha_hora_inicio: string; fecha_hora_fin: string }
+): Promise<TutoringSession> {
+  const response = await apiRequest<unknown>(`/sesiones/${id}/reprogramar`, {
+    method: "PATCH",
+    authRequired: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+    defaultErrorMessage: "Error al reprogramar la sesión",
+  });
+  const data = unwrapData<TutoringSession>(response);
+  if (!data) throw new ApiError("No se recibió la sesión actualizada", 500);
+  return data;
+}
+
 export async function completarSession(id: string, input: CompletarSessionInput): Promise<TutoringSession> {
   const response = await apiRequest<unknown>(`/sesiones/${id}/completar`, {
     method: "PATCH",

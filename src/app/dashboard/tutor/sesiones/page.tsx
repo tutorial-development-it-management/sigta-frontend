@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { getSessions, completarSession, TutoringSession, getErrorMessage } from "@/lib/api";
+import { getSessions, completarSession, reprogramarSession, TutoringSession, getErrorMessage } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Calendar, CheckCircle, Clock, BookOpen, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Calendar, CheckCircle, Clock, BookOpen, ChevronDown, ChevronUp, X, RefreshCw } from "lucide-react";
 import { cn } from "@/components/ui/Button";
 
 type Tab = "programada" | "realizada";
@@ -19,6 +19,103 @@ const fmt = (d: string) =>
     weekday: "short", day: "numeric", month: "short",
     hour: "2-digit", minute: "2-digit",
   });
+
+// ─── Modal Reprogramar ────────────────────────────────────────────────────────
+
+function ReprogramarModal({
+  session,
+  onClose,
+  onDone,
+}: {
+  session: TutoringSession;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [fechaInicio, setFechaInicio] = useState(
+    session.fecha_hora_inicio.slice(0, 16)
+  );
+  const [fechaFin, setFechaFin] = useState(
+    session.fecha_hora_fin.slice(0, 16)
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fechaInicio || !fechaFin) { setError("Ambas fechas son obligatorias"); return; }
+    if (fechaInicio >= fechaFin)   { setError("La fecha de inicio debe ser anterior al fin"); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      await reprogramarSession(session.id, {
+        fecha_hora_inicio: new Date(fechaInicio).toISOString(),
+        fecha_hora_fin:    new Date(fechaFin).toISOString(),
+      });
+      onDone();
+    } catch (err) {
+      setError(getErrorMessage(err, "Error al reprogramar la sesión"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputClass = "w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] outline-none focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white w-full max-w-md rounded-[12px] shadow-xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E7EB]">
+          <div>
+            <h2 className="text-[15px] font-bold text-[#0F2547]">Reprogramar sesión</h2>
+            <p className="text-[12px] text-gray-500">{session.materia.nombre} · {session.estudiante.full_name}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block mb-[6px] text-[13px] font-normal text-[#374151]">
+              Nueva fecha y hora de inicio <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+              required
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block mb-[6px] text-[13px] font-normal text-[#374151]">
+              Nueva fecha y hora de fin <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              min={fechaInicio || new Date().toISOString().slice(0, 16)}
+              required
+              className={inputClass}
+            />
+          </div>
+          {error && <p className="text-[12px] text-red-600 bg-red-50 rounded-[8px] px-3 py-2">{error}</p>}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-[11px] rounded-[9px] border border-[#D1D5DB] text-[13px] font-semibold text-[#374151] hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={loading}
+              className="flex-1 py-[11px] rounded-[9px] bg-[#FFC100] text-[13px] font-bold text-[#0F2547] hover:bg-[#e6ad00] disabled:opacity-60">
+              {loading ? "Guardando..." : "Confirmar reprogramación"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 // ─── Formulario Bitácora ──────────────────────────────────────────────────────
 
@@ -111,9 +208,11 @@ function BitacoraModal({
 function SessionCard({
   session,
   onComplete,
+  onReprogramar,
 }: {
   session: TutoringSession;
   onComplete: (s: TutoringSession) => void;
+  onReprogramar: (s: TutoringSession) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isProgramada = session.estado === "programada";
@@ -146,13 +245,22 @@ function SessionCard({
             {session.modalidad && <span className="capitalize">{session.modalidad}</span>}
           </div>
           {isProgramada && (
-            <button
-              onClick={() => onComplete(session)}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] bg-[#0F2547] text-white text-[12px] font-semibold hover:bg-[#1a3a6b] transition-colors"
-            >
-              <CheckCircle className="h-3.5 w-3.5" />
-              Registrar como Realizada
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => onComplete(session)}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] bg-[#0F2547] text-white text-[12px] font-semibold hover:bg-[#1a3a6b] transition-colors"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                Registrar como Realizada
+              </button>
+              <button
+                onClick={() => onReprogramar(session)}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-[8px] border border-[#D1D5DB] text-[#374151] text-[12px] font-semibold hover:bg-gray-50 transition-colors"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Reprogramar
+              </button>
+            </div>
           )}
           {!isProgramada && session.bitacoras.length > 0 && (
             <p className="mt-2 text-[12px] text-gray-500 italic truncate">
@@ -210,7 +318,8 @@ export default function TutorSesionesPage() {
   const [sessions, setSessions]     = useState<TutoringSession[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
-  const [completing, setCompleting] = useState<TutoringSession | null>(null);
+  const [completing,    setCompleting]    = useState<TutoringSession | null>(null);
+  const [reprogramando, setReprogramando] = useState<TutoringSession | null>(null);
 
   const fetchSessions = useCallback(async () => {
     if (!user?.id) return;
@@ -285,7 +394,12 @@ export default function TutorSesionesPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((s) => (
-            <SessionCard key={s.id} session={s} onComplete={setCompleting} />
+            <SessionCard
+              key={s.id}
+              session={s}
+              onComplete={setCompleting}
+              onReprogramar={setReprogramando}
+            />
           ))}
         </div>
       )}
@@ -295,6 +409,14 @@ export default function TutorSesionesPage() {
           session={completing}
           onClose={() => setCompleting(null)}
           onDone={() => { setCompleting(null); fetchSessions(); }}
+        />
+      )}
+
+      {reprogramando && (
+        <ReprogramarModal
+          session={reprogramando}
+          onClose={() => setReprogramando(null)}
+          onDone={() => { setReprogramando(null); fetchSessions(); }}
         />
       )}
     </div>

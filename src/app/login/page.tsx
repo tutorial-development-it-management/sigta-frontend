@@ -121,14 +121,12 @@ export default function LoginPage() {
             </div>
 
             <div className="mt-3">
-              <a
-                href="https://accounts.google.com/signin/v2/usernamerecovery"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/forgot-password"
                 className="w-full inline-flex items-center justify-center rounded-[9px] border border-[#D1D5DB] bg-white p-[13px] text-[14px] font-semibold tracking-[0.2px] text-[#1A5EB8] transition-colors hover:bg-[#F5F9FF]"
               >
                 Recuperar contraseña
-              </a>
+              </Link>
             </div>
 
             <p className="mt-7 text-center text-[11px] leading-[1.6] text-[#9CA3AF]">
