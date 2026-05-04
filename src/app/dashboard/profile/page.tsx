@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { User, Mail, Shield, Hash, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
 const ROLE_LABEL: Record<string, string> = {
   admin:       "Administrador TI",

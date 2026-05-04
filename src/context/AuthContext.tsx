@@ -9,6 +9,7 @@ import {
   clearApiAccessToken,
   getErrorMessage,
   getMe as apiGetMe,
+  loginWithGoogleToken as apiLoginWithGoogleToken,
   logoutFromBackend,
   register as apiRegister,
   setApiAccessToken,
@@ -17,10 +18,9 @@ import {
 import {
   User as FirebaseUser,
   GoogleAuthProvider,
-  getRedirectResult,
   onAuthStateChanged,
-  //signInWithRedirect,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from "firebase/auth";
 import {
@@ -74,6 +74,14 @@ const AuthContext = createContext<AuthContextType>({
 const SESSION_COOKIE_NAME = "firebase_session";
 const ROLE_COOKIE_NAME    = "sigta_role";
 const GOOGLE_AUTH_INTENT_KEY = "sigta.auth.google.intent";
+
+function isNonBlockingBackendLoginError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) {
+    return false;
+  }
+
+  return [400, 404, 405, 415, 422].includes(error.status);
+}
 
 function setCookie(name: string, value: string, maxAgeSeconds: number) {
   document.cookie = `${name}=${value}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
@@ -213,6 +221,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile;
   }, []);
 
+  const ensureBackendGoogleSession = useCallback(async (token: string) => {
+    try {
+      await apiLoginWithGoogleToken(token);
+    } catch (error) {
+      // Some backend versions only require Bearer token in /auth/me and can reject /auth/login payloads.
+      if (isNonBlockingBackendLoginError(error)) {
+        return;
+      }
+
+      throw error;
+    }
+  }, []);
+
   const forceRelogin = useCallback(async () => {
     try {
       if (auth?.currentUser) {
@@ -259,9 +280,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
 
-    setGoogleAuthIntent(true);
-    //await signInWithRedirect(auth, provider);
-    await signInWithPopup(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+      setGoogleAuthIntent(false);
+      return null;
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code?: string }).code)
+        : "";
+
+      const shouldFallbackToRedirect = code === "auth/popup-blocked";
+      if (!shouldFallbackToRedirect) {
+        throw error;
+      }
+
+      setGoogleAuthIntent(true);
+      await signInWithRedirect(auth, provider);
+    }
+
     return null;
   }, []);
 
@@ -293,40 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!auth) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const resolveRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        
-        if (!result?.user || !isMounted) {
-          return;
-        }
-
-        const token = await result.user.getIdToken(true);
-
-        if (!isMounted) {
-          return;
-        }
-
-        setFirebaseUser(result.user);
-        setIdToken(token);
-        setApiAccessToken(token, true);
-      } catch (error){
-      } finally {
-        setGoogleAuthIntent(false);
-      }
-    };
-
-    void resolveRedirect();
-
-    return () => {
-      isMounted = false;
-    };
+    setGoogleAuthIntent(false);
   }, []);
 
   useEffect(() => {
@@ -371,6 +374,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIdToken(token);
         setApiAccessToken(token, true);
 
+        await ensureBackendGoogleSession(token);
+
         await syncProfile(true);
       } catch (error) {
         await handleProfileSyncFailure(error);
@@ -385,7 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
       unsubscribe();
     };
-  }, [clearLocalSession, handleProfileSyncFailure, syncProfile]);
+  }, [clearLocalSession, ensureBackendGoogleSession, handleProfileSyncFailure, syncProfile]);
 
   const loginWithGoogle = useCallback(async () => {
     setLoading(true);
@@ -397,6 +402,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const token = await currentGoogleUser.getIdToken(true);
+      setIdToken(token);
+      setApiAccessToken(token, true);
+
+      await ensureBackendGoogleSession(token);
+
       const profile = await syncProfile(true);
       router.push(`/dashboard/${profile.role_name}`);
     } catch (error) {
@@ -404,7 +415,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [ensureGoogleSession, router, syncProfile]);
+  }, [ensureBackendGoogleSession, ensureGoogleSession, router, syncProfile]);
 
   const login = useCallback(async () => {
     await loginWithGoogle();

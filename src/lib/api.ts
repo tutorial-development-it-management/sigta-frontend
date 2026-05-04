@@ -124,8 +124,7 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
-  ?? (process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api` : "http://localhost:3000/api");
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
 const TOKEN_STORAGE_KEY = "sigta.auth.firebase.idToken";
 
@@ -430,36 +429,60 @@ export function resolveRouteByRole(roleName?: string | null): string {
 }
 
 export async function loginWithGoogleToken(idToken: string): Promise<LoginBackendResponse> {
-  const response = await fetch(`${API_BASE}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const attempts: Array<{ body?: Record<string, string> }> = [
+    { body: { id_token: idToken } },
+    { body: { idToken } },
+    {},
+  ];
+
+  for (let index = 0; index < attempts.length; index += 1) {
+    const attempt = attempts[index];
+    const headers: HeadersInit = {
       Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ id_token: idToken }),
-  });
+    };
 
-  const payload = await parseJsonSafe(response);
-  if (!response.ok) {
-    throw toApiError(response.status, payload, "No fue posible validar la sesion con el backend");
+    if (attempt.body) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    const response = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers,
+      body: attempt.body ? JSON.stringify(attempt.body) : undefined,
+    });
+
+    const payload = await parseJsonSafe(response);
+    if (!response.ok) {
+      const shouldRetry =
+        (response.status === 400 || response.status === 415 || response.status === 422)
+        && index < attempts.length - 1;
+
+      if (shouldRetry) {
+        continue;
+      }
+
+      throw toApiError(response.status, payload, "No fue posible validar la sesion con el backend");
+    }
+
+    const responseData = unwrapData<{ user?: BackendUserDto } | BackendUserDto>(payload);
+    const userDto = responseData && typeof responseData === "object" && "user" in responseData
+      ? responseData.user
+      : (responseData as BackendUserDto | null);
+
+    if (!userDto || typeof userDto !== "object" || !("role_name" in userDto)) {
+      throw new ApiError("El backend no retorno datos de usuario en /auth/login", 500);
+    }
+
+    const mappedUser = mapUserDto(userDto);
+
+    return {
+      message: extractMessageFromPayload(payload) ?? undefined,
+      user: mappedUser,
+      role_name: userDto.role_name,
+    };
   }
 
-  const responseData = unwrapData<{ user?: BackendUserDto } | BackendUserDto>(payload);
-  const userDto = responseData && typeof responseData === "object" && "user" in responseData
-    ? responseData.user
-    : (responseData as BackendUserDto | null);
-
-  if (!userDto || typeof userDto !== "object" || !("role_name" in userDto)) {
-    throw new ApiError("El backend no retorno datos de usuario en /auth/login", 500);
-  }
-
-  const mappedUser = mapUserDto(userDto);
-
-  return {
-    message: extractMessageFromPayload(payload) ?? undefined,
-    user: mappedUser,
-    role_name: userDto.role_name,
-  };
+  throw new ApiError("No fue posible validar la sesion con el backend", 500);
 }
 
 export async function registerUser(data: RegisterUserInput): Promise<RegisterUserResponse> {
