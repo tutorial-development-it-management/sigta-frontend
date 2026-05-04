@@ -8,10 +8,10 @@ export type CanonicalRole = "admin" | "coordinador" | "tutor" | "estudiante";
 export const ACCESS_DENIED_ROUTE = "/acceso-denegado";
 
 const ROLE_REDIRECT_MAP: Record<CanonicalRole, string> = {
-  admin: "/admin",
-  coordinador: "/coordinacion",
-  tutor: "/tutor",
-  estudiante: "/estudiante",
+  admin: "/dashboard/admin",
+  coordinador: "/dashboard/coordinator",
+  tutor: "/dashboard/tutor",
+  estudiante: "/dashboard/student",
 };
 
 export interface User {
