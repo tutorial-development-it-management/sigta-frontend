@@ -23,8 +23,15 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
+import {
+  CalendarTokenState,
+  isCalendarTokenValid,
+  requestGoogleCalendarAccessToken,
+} from "@/lib/googleCalendarOAuth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+
+const CALENDAR_TOKEN_KEY = "sigta.auth.google.calToken";
 
 type RegisterInput = Omit<RegisterPayload, "password"> & { password?: string };
 
@@ -33,7 +40,12 @@ interface AuthContextType {
   role: RoleName | null;
   firebaseUser: FirebaseUser | null;
   idToken: string | null;
+  calendarAccessToken: string | null;
+  hasCalendarAccess: boolean;
   loading: boolean;
+  connectGoogleCalendar: () => Promise<string>;
+  ensureGoogleCalendarAccessToken: (forcePrompt?: boolean) => Promise<string>;
+  clearGoogleCalendarAccess: () => void;
   login: (email?: string, password?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (payload: RegisterInput) => Promise<void>;
@@ -46,7 +58,12 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   firebaseUser: null,
   idToken: null,
+  calendarAccessToken: null,
+  hasCalendarAccess: false,
   loading: false,
+  connectGoogleCalendar: async () => "",
+  ensureGoogleCalendarAccessToken: async () => "",
+  clearGoogleCalendarAccess: () => { },
   login: async () => { },
   loginWithGoogle: async () => { },
   register: async () => { },
@@ -90,6 +107,47 @@ function setGoogleAuthIntent(active: boolean) {
   window.sessionStorage.removeItem(GOOGLE_AUTH_INTENT_KEY);
 }
 
+function readCalendarTokenState(): CalendarTokenState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const stored = window.sessionStorage.getItem(CALENDAR_TOKEN_KEY);
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as Partial<CalendarTokenState>;
+    if (typeof parsed.accessToken === "string" && typeof parsed.expiresAt === "number") {
+      return {
+        accessToken: parsed.accessToken,
+        expiresAt: parsed.expiresAt,
+      };
+    }
+  } catch {
+    return {
+      accessToken: stored,
+      expiresAt: 0,
+    };
+  }
+
+  return null;
+}
+
+function persistCalendarTokenState(tokenState: CalendarTokenState | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!tokenState) {
+    window.sessionStorage.removeItem(CALENDAR_TOKEN_KEY);
+    return;
+  }
+
+  window.sessionStorage.setItem(CALENDAR_TOKEN_KEY, JSON.stringify(tokenState));
+}
+
 function mapFirebaseError(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401) {
@@ -127,16 +185,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [role, setRole] = useState<RoleName | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [calendarTokenState, setCalendarTokenState] = useState<CalendarTokenState | null>(() => readCalendarTokenState());
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const hasCalendarAccess = isCalendarTokenValid(calendarTokenState);
+  const calendarAccessToken = hasCalendarAccess ? calendarTokenState?.accessToken ?? null : null;
 
   const clearLocalSession = useCallback(() => {
     setUser(null);
     setRole(null);
     setFirebaseUser(null);
     setIdToken(null);
+    setCalendarTokenState(null);
     clearApiAccessToken();
     setSessionCookie(false, undefined);
+    persistCalendarTokenState(null);
   }, []);
 
   const syncProfile = useCallback(async (forceRefreshToken = false) => {
@@ -200,6 +263,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     //await signInWithRedirect(auth, provider);
     await signInWithPopup(auth, provider);
     return null;
+  }, []);
+
+  const connectGoogleCalendar = useCallback(async () => {
+    const tokenState = await requestGoogleCalendarAccessToken("consent");
+    setCalendarTokenState(tokenState);
+    persistCalendarTokenState(tokenState);
+    return tokenState.accessToken;
+  }, []);
+
+  const ensureGoogleCalendarAccessToken = useCallback(
+    async (forcePrompt = false) => {
+      if (!forcePrompt && isCalendarTokenValid(calendarTokenState)) {
+        return calendarTokenState.accessToken;
+      }
+
+      const prompt: "" | "consent" = forcePrompt || !calendarTokenState ? "consent" : "";
+      const tokenState = await requestGoogleCalendarAccessToken(prompt);
+      setCalendarTokenState(tokenState);
+      persistCalendarTokenState(tokenState);
+      return tokenState.accessToken;
+    },
+    [calendarTokenState]
+  );
+
+  const clearGoogleCalendarAccess = useCallback(() => {
+    setCalendarTokenState(null);
+    persistCalendarTokenState(null);
   }, []);
 
   useEffect(() => {
@@ -401,7 +491,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         firebaseUser,
         idToken,
+        calendarAccessToken,
+        hasCalendarAccess,
         loading,
+        connectGoogleCalendar,
+        ensureGoogleCalendarAccessToken,
+        clearGoogleCalendarAccess,
         login,
         loginWithGoogle,
         register,

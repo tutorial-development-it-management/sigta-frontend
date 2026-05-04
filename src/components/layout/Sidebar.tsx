@@ -46,9 +46,10 @@ export function Sidebar({ className }: SidebarProps) {
   switch (role) {
     case "admin":
       navigation = [
-        { name: "Dashboard",   href: "/dashboard/admin",        icon: Home,          current: pathname === "/dashboard/admin" },
-        { name: "Usuarios",    href: "/dashboard/admin/users",  icon: Users,         current: pathname === "/dashboard/admin/users" },
-        { name: "Mi Perfil",   href: "/dashboard/profile",      icon: Settings,      current: pathname === "/dashboard/profile" },
+        { name: "Dashboard",   href: "/dashboard/admin",           icon: Home,          current: pathname === "/dashboard/admin" },
+        { name: "Usuarios",    href: "/dashboard/admin/users",     icon: Users,         current: pathname === "/dashboard/admin/users" },
+        { name: "Tutorías",    href: "/dashboard/admin/tutorias",  icon: ClipboardList, current: pathname.startsWith("/dashboard/admin/tutorias") },
+        { name: "Mi Perfil",   href: "/dashboard/profile",         icon: Settings,      current: pathname === "/dashboard/profile" },
       ];
       break;
     case "student":

@@ -648,23 +648,52 @@ export async function getRequests(params?: {
   return { items, total: envelope.meta?.total ?? items.length };
 }
 
-export async function acceptRequest(id: string): Promise<void> {
-  await apiRequest<unknown>(`/tutorias/${id}/accept`, {
-    method: "PATCH",
+export function isGoogleCalendarAuthError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) {
+    return false;
+  }
+
+  const code = error.code?.toLowerCase() ?? "";
+  const message = error.message.toLowerCase();
+
+  return (
+    code.includes("calendar")
+    || code.includes("google")
+    || code.includes("token")
+    || message.includes("calendar")
+    || message.includes("google")
+    || message.includes("access token")
+    || message.includes("token expir")
+    || message.includes("invalid_grant")
+  );
+}
+
+export async function acceptRequest(
+  id: string,
+  calendarAccessToken: string,
+  durationMinutes = 60
+): Promise<void> {
+  await apiRequest<unknown>(`/tutoria/aceptar/${id}`, {
+    method: "POST",
     authRequired: true,
     headers: { "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({
+      accessToken: calendarAccessToken,
+      duracion_minutos: durationMinutes,
+    }),
     defaultErrorMessage: "Error al aceptar solicitud",
+    skipGlobalUnauthorizedHandler: true,
   });
 }
 
-export async function cancelRequest(id: string): Promise<void> {
-  await apiRequest<unknown>(`/tutorias/${id}/cancel`, {
-    method: "PATCH",
+export async function cancelRequest(id: string, calendarAccessToken?: string): Promise<void> {
+  await apiRequest<unknown>(`/tutoria/${id}`, {
+    method: "DELETE",
     authRequired: true,
     headers: { "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify(calendarAccessToken ? { accessToken: calendarAccessToken } : {}),
     defaultErrorMessage: "Error al cancelar solicitud",
+    skipGlobalUnauthorizedHandler: true,
   });
 }
 

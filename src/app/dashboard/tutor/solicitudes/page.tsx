@@ -5,7 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ClipboardList, CheckCircle, XCircle, Clock, BookOpen, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/components/ui/Button";
-import { getRequests, acceptRequest, rejectRequest, TutoringRequest, getErrorMessage } from "@/lib/api";
+import {
+  getRequests,
+  acceptRequest,
+  rejectRequest,
+  TutoringRequest,
+  getErrorMessage,
+  isGoogleCalendarAuthError,
+} from "@/lib/api";
 
 type TabKey = "todas" | "pendiente" | "aceptada" | "cancelada";
 
@@ -151,11 +158,18 @@ function SolicitudCard({
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function SolicitudesPage() {
-  const { user }  = useAuth();
+  const {
+    user,
+    hasCalendarAccess,
+    connectGoogleCalendar,
+    ensureGoogleCalendarAccessToken,
+    clearGoogleCalendarAccess,
+  } = useAuth();
   const [activeTab, setActiveTab]     = useState<TabKey>("pendiente");
   const [solicitudes, setSolicitudes] = useState<TutoringRequest[]>([]);
   const [loading, setLoading]         = useState(true);
   const [loadingId, setLoadingId]     = useState<string | null>(null);
+  const [calendarConnecting, setCalendarConnecting] = useState(false);
   const [error, setError]             = useState<string | null>(null);
 
   const fetchSolicitudes = useCallback(async () => {
@@ -174,12 +188,40 @@ export default function SolicitudesPage() {
 
   useEffect(() => { fetchSolicitudes(); }, [fetchSolicitudes]);
 
+  const handleConnectCalendar = async () => {
+    setCalendarConnecting(true);
+    try {
+      await connectGoogleCalendar();
+    } catch (err) {
+      alert(getErrorMessage(err, "No se pudo conectar Google Calendar"));
+    } finally {
+      setCalendarConnecting(false);
+    }
+  };
+
+  const acceptWithCalendarToken = async (id: string, forcePrompt = false) => {
+    const accessToken = await ensureGoogleCalendarAccessToken(forcePrompt);
+    await acceptRequest(id, accessToken, 60);
+  };
+
   const handleAceptar = async (id: string) => {
     setLoadingId(id);
     try {
-      await acceptRequest(id);
+      await acceptWithCalendarToken(id);
       await fetchSolicitudes();
     } catch (err) {
+      if (isGoogleCalendarAuthError(err)) {
+        clearGoogleCalendarAccess();
+        try {
+          await acceptWithCalendarToken(id, true);
+          await fetchSolicitudes();
+          return;
+        } catch (retryError) {
+          alert(getErrorMessage(retryError, "Autoriza Google Calendar nuevamente para aceptar la solicitud"));
+          return;
+        }
+      }
+
       alert(getErrorMessage(err, "No se pudo aceptar la solicitud"));
     } finally {
       setLoadingId(null);
@@ -207,6 +249,23 @@ export default function SolicitudesPage() {
         <h1 className="text-2xl font-bold font-heading text-[#0F2547]">Solicitudes de Tutoría</h1>
         <p className="mt-1 text-sm text-gray-500">Revisa y gestiona las solicitudes de tus estudiantes.</p>
       </div>
+
+      {!hasCalendarAccess && (
+        <div className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[#0F2547]">Google Calendar no esta conectado</p>
+            <p className="mt-0.5 text-xs text-gray-500">Conecta Calendar para crear el evento cuando aceptes una tutoria.</p>
+          </div>
+          <button
+            onClick={handleConnectCalendar}
+            disabled={calendarConnecting}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-[8px] bg-[#0F2547] text-white text-[12px] font-semibold hover:bg-[#1a3a6b] disabled:opacity-50 transition-colors"
+          >
+            <Calendar className="h-4 w-4" />
+            {calendarConnecting ? "Conectando..." : "Conectar Google Calendar"}
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-[10px]">
