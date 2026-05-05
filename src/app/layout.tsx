@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, DM_Sans } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -26,6 +27,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${fontHeading.variable} ${fontBody.variable} font-body bg-background text-gray-900 antialiased`}>
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
