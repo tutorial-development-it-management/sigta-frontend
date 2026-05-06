@@ -64,7 +64,8 @@ export function Sidebar({ className }: SidebarProps) {
       navigation = [
         { name: "Inicio",         href: "/dashboard/tutor",                icon: Home,          current: pathname === "/dashboard/tutor" },
         { name: "Solicitudes",    href: "/dashboard/tutor/solicitudes",     icon: ClipboardList, current: pathname === "/dashboard/tutor/solicitudes" },
-        { name: "Mis Sesiones",   href: "/dashboard/tutor/sesiones",        icon: Calendar,      current: pathname === "/dashboard/tutor/sesiones" },
+        { name: "Mis Sesiones",   href: "/dashboard/tutor/sesiones",        icon: BookOpen,      current: pathname === "/dashboard/tutor/sesiones" },
+        { name: "Calendario",     href: "/dashboard/tutor/calendario",      icon: Calendar,      current: pathname === "/dashboard/tutor/calendario" },
         { name: "Disponibilidad", href: "/dashboard/tutor/disponibilidad",  icon: FileText,      current: pathname === "/dashboard/tutor/disponibilidad" },
         { name: "Mi Perfil",      href: "/dashboard/profile",               icon: Users,         current: pathname === "/dashboard/profile" },
       ];
