@@ -215,7 +215,7 @@ function SessionCard({
   onReprogramar: (s: TutoringSession) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const isProgramada = session.estado === "programada";
+  const isProgramada = session.estado === "programada" || session.estado === "agendada";
 
   return (
     <div className={cn(
@@ -337,8 +337,12 @@ export default function TutorSesionesPage() {
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-  const filtered = sessions.filter((s) => s.estado === tab);
-  const count = (t: Tab) => sessions.filter((s) => s.estado === t).length;
+  const matches = (s: TutoringSession, t: Tab) =>
+    t === "programada"
+      ? s.estado === "programada" || s.estado === "agendada"
+      : s.estado === t;
+  const filtered = sessions.filter((s) => matches(s, tab));
+  const count = (t: Tab) => sessions.filter((s) => matches(s, t)).length;
 
   return (
     <div className="space-y-5">
