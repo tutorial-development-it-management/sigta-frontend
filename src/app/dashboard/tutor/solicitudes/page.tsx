@@ -3,10 +3,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ClipboardList, CheckCircle, XCircle, Clock, BookOpen, Calendar, ChevronDown, ChevronUp, CalendarPlus, ExternalLink } from "lucide-react";
+import { ClipboardList, CheckCircle, XCircle, Clock, BookOpen, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/components/ui/Button";
-import { getRequests, acceptRequest, rejectRequest, TutoringRequest, getErrorMessage } from "@/lib/api";
-import { addToGoogleCalendar, buildColombiaIso } from "@/lib/googleCalendar";
+import {
+  getRequests,
+  acceptRequest,
+  rejectRequest,
+  TutoringRequest,
+  getErrorMessage,
+  isGoogleCalendarAuthError,
+} from "@/lib/api";
 
 type TabKey = "todas" | "pendiente" | "aceptada" | "cancelada";
 
@@ -31,86 +37,6 @@ function formatTime(timeStr: string): string {
     const d = timeStr.includes("T") ? new Date(timeStr) : new Date(`1970-01-01T${timeStr}`);
     return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
-}
-
-// ── Banner de calendario ───────────────────────────────────────────────────────
-
-function CalendarBanner({
-  solicitud,
-  onDismiss,
-}: {
-  solicitud: TutoringRequest;
-  onDismiss: () => void;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [link, setLink]       = useState<string | null>(null);
-  const [error, setError]     = useState<string | null>(null);
-
-  const handleAdd = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const startIso = buildColombiaIso(solicitud.preferred_date, solicitud.preferred_time);
-      const endIso   = buildColombiaIso(solicitud.preferred_date, solicitud.preferred_time, 60);
-      const url = await addToGoogleCalendar({
-        title:       `Tutoría: ${solicitud.subject.name} — ${solicitud.student.full_name}`,
-        description: `Tutoría SIGTA\nMateria: ${solicitud.subject.name}\nEstudiante: ${solicitud.student.full_name}\nModalidad: ${solicitud.modality}${solicitud.topic ? `\nTema: ${solicitud.topic}` : ""}`,
-        startIso,
-        endIso,
-        location:
-          solicitud.modality === "virtual"
-            ? "Virtual — enlace por definir"
-            : "UPTC — Facultad de Ingeniería",
-      });
-      setLink(url);
-    } catch (err) {
-      setError(getErrorMessage(err, "No fue posible agregar al calendario"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (link) {
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[#1E7E34]/30 bg-[#E6F4EA] px-4 py-3">
-        <div className="flex items-center gap-2 text-[13px] text-[#1E7E34] font-medium">
-          <CheckCircle className="h-4 w-4 flex-shrink-0" />
-          Evento agregado a Google Calendar
-        </div>
-        <div className="flex items-center gap-2">
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[12px] text-[#1A5EB8] hover:underline"
-          >
-            Abrir <ExternalLink className="h-3 w-3" />
-          </a>
-          <button onClick={onDismiss} className="text-[11px] text-gray-400 hover:text-gray-600">Cerrar</button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[#FFC100]/50 bg-[#FFF9E6] px-4 py-3">
-      <p className="text-[13px] text-[#0F2547]">
-        Tutoría aceptada. ¿Deseas agregarla a tu Google Calendar?
-      </p>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {error && <span className="text-[11px] text-red-500">{error}</span>}
-        <button
-          onClick={handleAdd}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-[#0F2547] text-white text-[12px] font-semibold hover:bg-[#1a3a6b] disabled:opacity-50 transition-colors"
-        >
-          <CalendarPlus className="h-3.5 w-3.5" />
-          {loading ? "Agregando..." : "Agregar"}
-        </button>
-        <button onClick={onDismiss} className="text-[11px] text-gray-400 hover:text-gray-600">Omitir</button>
-      </div>
-    </div>
-  );
 }
 
 // ── Card ───────────────────────────────────────────────────────────────────────
@@ -232,7 +158,6 @@ function SolicitudCard({
 // ── Página ─────────────────────────────────────────────────────────────────────
 
 export default function SolicitudesPage() {
-<<<<<<< HEAD
   const {
     user,
     hasCalendarAccess,
@@ -240,21 +165,12 @@ export default function SolicitudesPage() {
     ensureGoogleCalendarAccessToken,
     clearGoogleCalendarAccess,
   } = useAuth();
-  const [activeTab, setActiveTab]     = useState<TabKey>("pendiente");
-  const [solicitudes, setSolicitudes] = useState<TutoringRequest[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [loadingId, setLoadingId]     = useState<string | null>(null);
+  const [activeTab, setActiveTab]                   = useState<TabKey>("pendiente");
+  const [solicitudes, setSolicitudes]               = useState<TutoringRequest[]>([]);
+  const [loading, setLoading]                       = useState(true);
+  const [loadingId, setLoadingId]                   = useState<string | null>(null);
   const [calendarConnecting, setCalendarConnecting] = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-=======
-  const { user }  = useAuth();
-  const [activeTab, setActiveTab]           = useState<TabKey>("pendiente");
-  const [solicitudes, setSolicitudes]       = useState<TutoringRequest[]>([]);
-  const [loading, setLoading]               = useState(true);
-  const [loadingId, setLoadingId]           = useState<string | null>(null);
-  const [error, setError]                   = useState<string | null>(null);
-  const [calendarBanner, setCalendarBanner] = useState<TutoringRequest | null>(null);
->>>>>>> cec17aa (feat: integracion Google Calendar y fix tutores por materia)
+  const [error, setError]                           = useState<string | null>(null);
 
   const fetchSolicitudes = useCallback(async () => {
     if (!user?.id) return;
@@ -291,15 +207,8 @@ export default function SolicitudesPage() {
   const handleAceptar = async (id: string) => {
     setLoadingId(id);
     try {
-<<<<<<< HEAD
       await acceptWithCalendarToken(id);
-=======
-      const solicitud = solicitudes.find((s) => s.id === id);
-      await acceptRequest(id);
->>>>>>> cec17aa (feat: integracion Google Calendar y fix tutores por materia)
       await fetchSolicitudes();
-      // Mostrar banner para agregar al calendario con la solicitud original
-      if (solicitud) setCalendarBanner(solicitud);
     } catch (err) {
       if (isGoogleCalendarAuthError(err)) {
         clearGoogleCalendarAccess();
@@ -341,7 +250,6 @@ export default function SolicitudesPage() {
         <p className="mt-1 text-sm text-gray-500">Revisa y gestiona las solicitudes de tus estudiantes.</p>
       </div>
 
-<<<<<<< HEAD
       {!hasCalendarAccess && (
         <div className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -357,14 +265,6 @@ export default function SolicitudesPage() {
             {calendarConnecting ? "Conectando..." : "Conectar Google Calendar"}
           </button>
         </div>
-=======
-      {/* Banner de Google Calendar */}
-      {calendarBanner && (
-        <CalendarBanner
-          solicitud={calendarBanner}
-          onDismiss={() => setCalendarBanner(null)}
-        />
->>>>>>> cec17aa (feat: integracion Google Calendar y fix tutores por materia)
       )}
 
       {/* Stats */}
