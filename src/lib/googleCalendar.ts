@@ -1,34 +1,10 @@
 "use client";
 
-// ── GIS minimal types ─────────────────────────────────────────────────────────
-
-interface GisTokenResponse {
-  access_token: string;
-  error?: string;
-  error_description?: string;
-}
-
-interface GisTokenClient {
-  requestAccessToken: (overrides?: { prompt?: string }) => void;
-}
-
-interface GoogleAccountsOAuth2 {
-  initTokenClient: (config: {
-    client_id: string;
-    scope: string;
-    callback: (response: GisTokenResponse) => void;
-  }) => GisTokenClient;
-}
-
-declare global {
-  interface Window {
-    google?: {
-      accounts?: {
-        oauth2?: GoogleAccountsOAuth2;
-      };
-    };
-  }
-}
+// La declaración global de `Window.google` vive en `googleCalendarOAuth.ts`
+// para evitar conflictos de declaration merging.
+type GoogleAccountsOAuth2 = NonNullable<
+  NonNullable<NonNullable<Window["google"]>["accounts"]>["oauth2"]
+>;
 
 // ── Wait for GIS script to load ────────────────────────────────────────────────
 
