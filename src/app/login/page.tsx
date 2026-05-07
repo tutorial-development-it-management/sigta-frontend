@@ -3,14 +3,23 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage } from "@/lib/api";
-import { GraduationCap, AlertCircle, Layers } from "lucide-react";
+import { GraduationCap, AlertCircle, Layers, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+type ActiveLogin = "google" | "email" | null;
+
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [activeLogin, setActiveLogin] = useState<ActiveLogin>(null);
   const [error, setError] = useState<string | null>(null);
-  const { loginWithGoogle, loading, user, role } = useAuth();
+
+  const { loginWithGoogle, loginWithEmail, loading, user, role } = useAuth();
   const router = useRouter();
+
+  const isLoading = activeLogin !== null || loading;
 
   useEffect(() => {
     if (!loading && user && role) {
@@ -19,12 +28,30 @@ export default function LoginPage() {
   }, [loading, user, role, router]);
 
   const handleGoogleLogin = async () => {
+    if (isLoading) return;
     setError(null);
-
+    setActiveLogin("google");
     try {
       await loginWithGoogle();
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "No fue posible iniciar sesion con Google"));
+      setError(getErrorMessage(err, "No fue posible iniciar sesión con Google"));
+    } finally {
+      setActiveLogin(null);
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLoading) return;
+    if (!email.trim() || !password) return;
+    setError(null);
+    setActiveLogin("email");
+    try {
+      await loginWithEmail(email.trim(), password);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "No fue posible iniciar sesión"));
+    } finally {
+      setActiveLogin(null);
     }
   };
 
@@ -72,9 +99,9 @@ export default function LoginPage() {
       </div>
 
       {/* Right Panel */}
-      <div className="w-full lg:w-[400px] bg-white px-[44px] py-12 flex flex-col justify-center">
+      <div className="w-full lg:w-[420px] bg-white px-[44px] py-10 flex flex-col justify-center overflow-y-auto">
         <div className="w-full">
-          <div className="mb-8 text-left">
+          <div className="mb-6 text-left">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.8px] text-[#FFC100]">ACCESO INSTITUCIONAL</p>
             <h2 className="text-[26px] font-bold tracking-[-0.4px] text-[#0F2547]">
               Bienvenido de nuevo
@@ -84,52 +111,124 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-0">
-
+          <div>
             {error && (
-              <div className="mb-[18px] flex items-start gap-2">
+              <div className="mb-4 flex items-start gap-2 rounded-[8px] bg-[#FEF2F2] px-3 py-[10px]">
                 <AlertCircle className="mt-[1px] h-4 w-4 flex-shrink-0 text-[#DC2626]" />
-                <p className="block text-[12px] text-[#DC2626]">{error}</p>
+                <p className="text-[12px] text-[#DC2626]">{error}</p>
               </div>
             )}
 
-            <div>
+            {/* Google */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+              className="w-full cursor-pointer rounded-[9px] border-none bg-[#FFC100] p-[13px] text-[14px] font-bold tracking-[0.3px] text-[#0F2547] transition-colors hover:bg-[#e6ad00] disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {activeLogin === "google" ? (
+                <svg className="h-5 w-5 animate-spin text-[#0F2547]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <>
+                  <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Iniciar sesión con Google
+                </>
+              )}
+            </button>
+
+            {/* Divider */}
+            <div className="my-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-[#E5E7EB]" />
+              <span className="text-[11px] font-medium text-[#9CA3AF]">o ingresa con correo</span>
+              <div className="h-px flex-1 bg-[#E5E7EB]" />
+            </div>
+
+            {/* Email / Password form */}
+            <form onSubmit={handleEmailLogin} noValidate>
+              <div className="mb-3">
+                <label htmlFor="email" className="mb-[6px] block text-[12px] font-semibold text-[#374151]">
+                  Correo electrónico
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="correo@uptc.edu.co"
+                  className="w-full rounded-[9px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] placeholder-[#9CA3AF] outline-none transition-colors focus:border-[#0F2547] focus:ring-2 focus:ring-[#0F2547]/10 disabled:opacity-60"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label htmlFor="password" className="mb-[6px] block text-[12px] font-semibold text-[#374151]">
+                  Contraseña
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    placeholder="••••••••"
+                    className="w-full rounded-[9px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] pr-[42px] text-[13px] text-[#111827] placeholder-[#9CA3AF] outline-none transition-colors focus:border-[#0F2547] focus:ring-2 focus:ring-[#0F2547]/10 disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    tabIndex={-1}
+                    className="absolute right-[12px] top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#374151]"
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
               <button
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full cursor-pointer rounded-[9px] border-none bg-[#FFC100] p-[13px] text-[14px] font-bold tracking-[0.3px] text-[#0F2547] transition-colors hover:bg-[#e6ad00] disabled:cursor-not-allowed disabled:opacity-60"
+                type="submit"
+                disabled={isLoading || !email.trim() || !password}
+                className="w-full cursor-pointer rounded-[9px] border-none bg-[#0F2547] p-[13px] text-[14px] font-bold tracking-[0.3px] text-white transition-colors hover:bg-[#1a3a6b] disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center"
               >
-                {loading ? (
-                  <svg className="h-5 w-5 animate-spin text-[#0F2547]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                {activeLogin === "email" ? (
+                  <svg className="h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
-                  "Iniciar sesión con Google"
+                  "Iniciar sesión"
                 )}
               </button>
-            </div>
+            </form>
 
-            <div className="mt-3">
+            {/* Secondary links */}
+            <div className="mt-4 flex flex-col gap-3">
               <Link
                 href="/register"
-                className="w-full inline-flex items-center justify-center rounded-[9px] border border-[#D1D5DB] bg-white p-[13px] text-[14px] font-semibold tracking-[0.2px] text-[#0F2547] transition-colors hover:bg-[#FFF8DC]"
+                className="w-full inline-flex items-center justify-center rounded-[9px] border border-[#D1D5DB] bg-white p-[11px] text-[13px] font-semibold tracking-[0.2px] text-[#0F2547] transition-colors hover:bg-[#FFF8DC]"
               >
                 Registrarse
               </Link>
-            </div>
-
-            <div className="mt-3">
               <Link
                 href="/forgot-password"
-                className="w-full inline-flex items-center justify-center rounded-[9px] border border-[#D1D5DB] bg-white p-[13px] text-[14px] font-semibold tracking-[0.2px] text-[#1A5EB8] transition-colors hover:bg-[#F5F9FF]"
+                className="w-full inline-flex items-center justify-center rounded-[9px] border border-[#D1D5DB] bg-white p-[11px] text-[13px] font-semibold tracking-[0.2px] text-[#1A5EB8] transition-colors hover:bg-[#F5F9FF]"
               >
                 Recuperar contraseña
               </Link>
             </div>
 
-            <p className="mt-7 text-center text-[11px] leading-[1.6] text-[#9CA3AF]">
+            <p className="mt-6 text-center text-[11px] leading-[1.6] text-[#9CA3AF]">
               Sistema desarrollado por estudiantes de <span className="font-bold text-[#374151]">Ingenieria de Sistemas - UPTC</span>
             </p>
           </div>
