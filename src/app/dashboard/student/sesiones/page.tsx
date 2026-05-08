@@ -10,7 +10,7 @@ import {
 } from "@/lib/api";
 import { SigCalendar } from "@/components/ui/SigCalendar";
 import { StatCard } from "@/components/ui/StatCard";
-import { Calendar, CheckCircle, Clock, Star, X, BookOpen, LayoutList } from "lucide-react";
+import { Bell, Calendar, CheckCircle, Clock, Star, X, BookOpen, LayoutList } from "lucide-react";
 import { cn } from "@/components/ui/Button";
 
 const fmt = (d: string) =>
@@ -185,6 +185,13 @@ export default function StudentSesionesPage() {
     return acc + diff / (1000 * 60 * 60);
   }, 0);
 
+  const porEvaluar = realizadas.filter((s) => s.retroalimentaciones.length === 0);
+  const otherSessions = sessions.filter(
+    (s) => !(s.estado === "realizada" && s.retroalimentaciones.length === 0)
+  );
+  const isLate = (s: TutoringSession) =>
+    Date.now() - new Date(s.fecha_hora_fin).getTime() > 24 * 60 * 60 * 1000;
+
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between">
@@ -202,9 +209,10 @@ export default function StudentSesionesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-[10px]">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-[10px]">
         <StatCard title="Programadas"  value={String(programadas.length)} icon={Clock}       iconWrapperClassName="bg-[#FFF3CC] text-[#B8860B]" />
         <StatCard title="Realizadas"   value={String(realizadas.length)}  icon={CheckCircle} iconWrapperClassName="bg-[#E6F4EA] text-[#1E7E34]" />
+        <StatCard title="Por evaluar"  value={String(porEvaluar.length)}  icon={Star}        iconWrapperClassName={porEvaluar.length > 0 ? "bg-[#FFF3CC] text-[#B8860B]" : "bg-gray-100 text-gray-400"} />
         <StatCard title="Horas totales" value={`${Math.round(horasTotales * 10) / 10}h`} icon={Calendar} iconWrapperClassName="bg-[#E8F0FE] text-[#1A5EB8]" />
       </div>
 
@@ -215,35 +223,68 @@ export default function StudentSesionesPage() {
       ) : view === "calendar" ? (
         <SigCalendar sessions={sessions} role="student" onEventClick={setDetail} />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {sessions.length === 0 ? (
             <p className="text-sm text-center text-gray-400 py-10">No tienes sesiones registradas.</p>
-          ) : sessions.map((s) => {
-            const yaEvaluo = s.retroalimentaciones.length > 0;
-            return (
-              <div key={s.id} className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-[#FFC100]/50" onClick={() => setDetail(s)}>
-                <div>
-                  <p className="text-[13px] font-semibold text-[#0F2547]">{s.materia.nombre}</p>
-                  <p className="text-[12px] text-gray-500">{s.tutor.full_name} · {new Date(s.fecha_hora_inicio).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}</p>
+          ) : (
+            <>
+              {porEvaluar.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[13px] font-semibold text-[#B8860B]">Pendientes de evaluación</p>
+                    <span className="bg-[#FFC100] text-[#0F2547] text-[10px] font-bold px-1.5 py-0.5 rounded-full">{porEvaluar.length}</span>
+                  </div>
+                  {porEvaluar.map((s) => (
+                    <div key={s.id} className="bg-[#FFFBF0] border border-[#FFC100]/50 rounded-[10px] p-4 flex items-center justify-between gap-3 cursor-pointer" onClick={() => setDetail(s)}>
+                      <div>
+                        <p className="text-[13px] font-semibold text-[#0F2547]">{s.materia.nombre}</p>
+                        <p className="text-[12px] text-gray-500">{s.tutor.full_name} · {new Date(s.fecha_hora_inicio).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}</p>
+                        {isLate(s) && (
+                          <p className="text-[11px] text-[#B8860B] mt-0.5 flex items-center gap-1">
+                            <Bell className="h-3 w-3" /> Han pasado más de 24 horas, ¿ya evaluaste esta sesión?
+                          </p>
+                        )}
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); setEvaluating(s); }}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-[8px] bg-[#FFC100] text-[12px] font-bold text-[#0F2547] hover:bg-[#e6ad00] flex items-center gap-1.5">
+                        <Star className="h-3.5 w-3.5" /> Evaluar
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={cn("text-[11px] px-2 py-1 rounded-full font-medium", {
-                    programada: "bg-[#FFF3CC] text-[#B8860B]",
-                    realizada:  "bg-[#E6F4EA] text-[#1E7E34]",
-                    cancelada:  "bg-red-50 text-red-600",
-                  }[s.estado] ?? "bg-gray-100 text-gray-600")}>
-                    {s.estado}
-                  </span>
-                  {s.estado === "realizada" && !yaEvaluo && (
-                    <button onClick={(e) => { e.stopPropagation(); setEvaluating(s); }}
-                      className="text-[11px] font-semibold text-[#FFC100] flex items-center gap-1">
-                      <Star className="h-3 w-3" /> Evaluar
-                    </button>
-                  )}
+              )}
+              {otherSessions.length > 0 && (
+                <div className="space-y-2">
+                  {porEvaluar.length > 0 && <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Historial</p>}
+                  {otherSessions.map((s) => {
+                    const yaEvaluo = s.retroalimentaciones.length > 0;
+                    return (
+                      <div key={s.id} className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-[#FFC100]/50" onClick={() => setDetail(s)}>
+                        <div>
+                          <p className="text-[13px] font-semibold text-[#0F2547]">{s.materia.nombre}</p>
+                          <p className="text-[12px] text-gray-500">{s.tutor.full_name} · {new Date(s.fecha_hora_inicio).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={cn("text-[11px] px-2 py-1 rounded-full font-medium", {
+                            programada: "bg-[#FFF3CC] text-[#B8860B]",
+                            realizada:  "bg-[#E6F4EA] text-[#1E7E34]",
+                            cancelada:  "bg-red-50 text-red-600",
+                          }[s.estado] ?? "bg-gray-100 text-gray-600")}>
+                            {s.estado}
+                          </span>
+                          {s.estado === "realizada" && yaEvaluo && (
+                            <span className="text-[11px] text-[#1E7E34]">
+                              {"★".repeat(s.retroalimentaciones[0].calificacion)}{"☆".repeat(5 - s.retroalimentaciones[0].calificacion)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            );
-          })}
+              )}
+            </>
+          )}
         </div>
       )}
 

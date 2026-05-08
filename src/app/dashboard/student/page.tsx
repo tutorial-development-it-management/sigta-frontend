@@ -3,15 +3,16 @@
 import { useAuth } from "@/context/AuthContext";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Calendar, CheckCircle, Clock, Plus } from "lucide-react";
+import { Calendar, CheckCircle, Clock, Plus, Star } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { getRequests, TutoringRequest } from "@/lib/api";
+import { getRequests, getSessions, TutoringRequest, TutoringSession } from "@/lib/api";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
   const [dateStr, setDateStr]       = useState("");
   const [tutorias, setTutorias]     = useState<TutoringRequest[]>([]);
+  const [sinEvaluar, setSinEvaluar] = useState<TutoringSession[]>([]);
 
   useEffect(() => {
     setDateStr(new Date().toLocaleDateString("es-ES", { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
@@ -27,7 +28,18 @@ export default function StudentDashboard() {
     }
   }, [user?.id]);
 
+  const fetchSinEvaluar = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const { items } = await getSessions({ student_id: String(user.id), estado: "realizada", limit: 50 });
+      setSinEvaluar(items.filter((s) => s.retroalimentaciones.length === 0));
+    } catch {
+      // silencioso en dashboard
+    }
+  }, [user?.id]);
+
   useEffect(() => { fetchTutorias(); }, [fetchTutorias]);
+  useEffect(() => { fetchSinEvaluar(); }, [fetchSinEvaluar]);
 
   const count = (status: string) => tutorias.filter((t) => t.status === status).length;
 
@@ -57,6 +69,23 @@ export default function StudentDashboard() {
         <StatCard title="Confirmadas" value={String(count("aceptada"))}  icon={Calendar}     iconWrapperClassName="bg-[#E8F0FE] text-[#1A5EB8]" />
         <StatCard title="Realizadas"  value={String(count("realizada"))} icon={CheckCircle}  iconWrapperClassName="bg-[#E6F4EA] text-[#1E7E34]" />
       </div>
+
+      {sinEvaluar.length > 0 && (
+        <Link href="/dashboard/student/sesiones" className="block">
+          <div className="flex items-center gap-3 bg-[#FFFBF0] border border-[#FFC100]/50 rounded-[10px] p-4 hover:border-[#FFC100] transition-colors">
+            <div className="h-9 w-9 rounded-[9px] bg-[#FFF3CC] text-[#B8860B] flex items-center justify-center flex-shrink-0">
+              <Star className="h-4 w-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold text-[#B8860B]">
+                {sinEvaluar.length === 1 ? "Tienes 1 tutoría por evaluar" : `Tienes ${sinEvaluar.length} tutorías por evaluar`}
+              </p>
+              <p className="text-[12px] text-[#B8860B]/70">Tu retroalimentación ayuda a mejorar el programa.</p>
+            </div>
+            <span className="text-[12px] text-[#B8860B] font-semibold flex-shrink-0">Ir a evaluar →</span>
+          </div>
+        </Link>
+      )}
 
       <div>
         <div className="flex items-center justify-between mb-3">
