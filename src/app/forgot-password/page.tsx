@@ -3,9 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Layers, AlertCircle, CheckCircle } from "lucide-react";
-import { ApiError } from "@/lib/api";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
+const FIREBASE_ERROR_MESSAGES: Record<string, string> = {
+  "auth/invalid-email":     "El formato del correo electrónico no es válido",
+  "auth/too-many-requests": "Demasiadas solicitudes. Intenta de nuevo más tarde",
+  "auth/network-request-failed": "Error de red. Verifica tu conexión",
+};
 
 export default function ForgotPasswordPage() {
   const [email, setEmail]     = useState("");
@@ -18,18 +23,14 @@ export default function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/forgot-password`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ email: email.trim() }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new ApiError(json.message ?? "Error al procesar la solicitud", res.status);
-      }
+      if (!auth) throw new Error("Firebase no está disponible");
+      await sendPasswordResetEmail(auth, email.trim());
       setSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al procesar la solicitud");
+    } catch (err: unknown) {
+      const code = typeof err === "object" && err !== null && "code" in err
+        ? String((err as { code: string }).code)
+        : "";
+      setError(FIREBASE_ERROR_MESSAGES[code] ?? "No fue posible enviar el correo. Intenta de nuevo");
     } finally {
       setLoading(false);
     }

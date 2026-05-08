@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Layers, AlertCircle } from "lucide-react";
+import { Layers, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage } from "@/lib/api";
@@ -10,14 +10,15 @@ import { getErrorMessage } from "@/lib/api";
 export default function RegisterPage() {
   const router = useRouter();
   const { register, loading: authLoading, user, role } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [codigoUptc, setCodigoUptc] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && user && role) {
@@ -28,26 +29,30 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
-    setSubmitting(true);
 
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    setSubmitting(true);
     try {
       await register({
-        email,
+        email: email.trim(),
         password,
-        first_name: firstName,
-        last_name: lastName,
-        codigo_uptc: codigoUptc,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        codigo_uptc: codigoUptc.trim(),
         role_name: "student",
       });
-
-      setSuccess("Registro exitoso. Redirigiendo al panel...");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "No fue posible registrar el usuario"));
     } finally {
       setSubmitting(false);
     }
   };
+
+  const isLoading = submitting || authLoading;
 
   return (
     <div className="flex h-screen bg-white" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -90,7 +95,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="w-full lg:w-[400px] bg-white px-[44px] py-8 flex flex-col justify-center">
+      <div className="w-full lg:w-[400px] bg-white px-[44px] py-8 flex flex-col justify-center overflow-y-auto">
         <div className="w-full max-w-[320px] mx-auto">
           <div className="mb-6 text-center">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.8px] text-[#FFC100]">REGISTRO INSTITUCIONAL</p>
@@ -98,79 +103,116 @@ export default function RegisterPage() {
             <p className="mt-2 text-[13px] text-[#6B7280]">Completa tus datos para registrarte como estudiante.</p>
           </div>
 
-          <form className="mt-0" onSubmit={handleSubmit}>
+          {error && (
+            <div className="mb-4 flex items-start gap-2 rounded-[8px] bg-[#FEF2F2] px-3 py-[10px]">
+              <AlertCircle className="mt-[1px] h-4 w-4 flex-shrink-0 text-[#DC2626]" />
+              <p className="text-[12px] text-[#DC2626]">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
             <div className="mb-[14px]">
-              <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">Correo Institucional</label>
+              <label className="mb-[6px] block text-[12px] font-semibold text-[#374151]">
+                Correo institucional
+              </label>
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
+                disabled={isLoading}
+                placeholder="correo@uptc.edu.co"
+                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#0F2547] focus:ring-2 focus:ring-[#0F2547]/10 disabled:opacity-60"
               />
             </div>
 
             <div className="mb-[14px]">
-              <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">Nombres</label>
+              <label className="mb-[6px] block text-[12px] font-semibold text-[#374151]">
+                Nombres
+              </label>
               <input
                 type="text"
                 required
+                autoComplete="given-name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
+                disabled={isLoading}
+                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#0F2547] focus:ring-2 focus:ring-[#0F2547]/10 disabled:opacity-60"
               />
             </div>
 
             <div className="mb-[14px]">
-              <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">Apellidos</label>
+              <label className="mb-[6px] block text-[12px] font-semibold text-[#374151]">
+                Apellidos
+              </label>
               <input
                 type="text"
                 required
+                autoComplete="family-name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
+                disabled={isLoading}
+                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#0F2547] focus:ring-2 focus:ring-[#0F2547]/10 disabled:opacity-60"
               />
             </div>
 
             <div className="mb-[14px]">
-              <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">Código UPTC</label>
+              <label className="mb-[6px] block text-[12px] font-semibold text-[#374151]">
+                Código UPTC
+              </label>
               <input
                 type="text"
                 required
                 value={codigoUptc}
                 onChange={(e) => setCodigoUptc(e.target.value)}
-                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
+                disabled={isLoading}
+                placeholder="ej. 201912345"
+                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#0F2547] focus:ring-2 focus:ring-[#0F2547]/10 disabled:opacity-60"
               />
             </div>
 
-            <div className="mb-[14px]">
-              <label className="mb-[6px] block text-[13px] font-normal text-[#374151]">Contraseña</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] text-[13px] text-[#111827] outline-none transition-[border,box-shadow] duration-150 placeholder:text-[13px] placeholder:text-[#9CA3AF] focus:border-[#FFC100] focus:shadow-[0_0_0_3px_rgba(255,193,0,0.12)]"
-              />
-            </div>
-
-            {error && (
-              <div className="mb-[14px] flex items-start gap-2">
-                <AlertCircle className="mt-[1px] h-4 w-4 flex-shrink-0 text-[#DC2626]" />
-                <p className="block text-[12px] text-[#DC2626]">{error}</p>
+            <div className="mb-5">
+              <label className="mb-[6px] block text-[12px] font-semibold text-[#374151]">
+                Contraseña <span className="font-normal text-[#9CA3AF]">(mín. 6 caracteres)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                  placeholder="••••••••"
+                  className="block w-full rounded-[8px] border border-[#D1D5DB] bg-white px-[14px] py-[11px] pr-[42px] text-[13px] text-[#111827] outline-none transition-colors placeholder:text-[#9CA3AF] focus:border-[#0F2547] focus:ring-2 focus:ring-[#0F2547]/10 disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  tabIndex={-1}
+                  className="absolute right-[12px] top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#374151]"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-            )}
-
-            {success && <p className="mb-[14px] block text-[12px] text-green-600">{success}</p>}
-
-            <div>
-              <button
-                type="submit"
-                disabled={submitting || authLoading}
-                className="w-full cursor-pointer rounded-[9px] border-none bg-[#FFC100] p-[13px] text-[14px] font-bold tracking-[0.3px] text-[#0F2547] transition-colors hover:bg-[#e6ad00] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {submitting || authLoading ? "Registrando..." : "Registrarse"}
-              </button>
             </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !email || !password || !firstName || !lastName || !codigoUptc}
+              className="w-full cursor-pointer rounded-[9px] border-none bg-[#FFC100] p-[13px] text-[14px] font-bold tracking-[0.3px] text-[#0F2547] transition-colors hover:bg-[#e6ad00] disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center"
+            >
+              {isLoading ? (
+                <svg className="h-5 w-5 animate-spin text-[#0F2547]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                "Registrarse"
+              )}
+            </button>
 
             <div className="mt-3">
               <Link

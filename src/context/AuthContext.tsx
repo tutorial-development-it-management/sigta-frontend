@@ -18,7 +18,9 @@ import {
 import {
   User as FirebaseUser,
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -48,6 +50,7 @@ interface AuthContextType {
   clearGoogleCalendarAccess: () => void;
   login: (email?: string, password?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
   register: (payload: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: (forceRefresh?: boolean) => Promise<string | null>;
@@ -66,6 +69,7 @@ const AuthContext = createContext<AuthContextType>({
   clearGoogleCalendarAccess: () => { },
   login: async () => { },
   loginWithGoogle: async () => { },
+  loginWithEmail: async () => { },
   register: async () => { },
   logout: async () => { },
   refreshToken: async () => null,
@@ -180,9 +184,17 @@ function mapFirebaseError(error: unknown) {
     "auth/popup-blocked": "El navegador bloqueo la ventana emergente de Google",
     "auth/account-exists-with-different-credential": "Ya existe una cuenta con otro metodo de inicio de sesion",
     "auth/unauthorized-domain": "Dominio no autorizado en Firebase para Google Sign-In",
-    "auth/operation-not-allowed": "Google Sign-In no esta habilitado en Firebase",
+    "auth/operation-not-allowed": "Metodo de inicio de sesion no habilitado en Firebase",
     "auth/network-request-failed": "No hay conexion con Firebase. Verifica tu red",
     "auth/web-storage-unsupported": "El navegador no permite almacenamiento para continuar con Google Sign-In",
+    "auth/user-not-found": "No existe una cuenta con este correo electronico",
+    "auth/wrong-password": "Contrasena incorrecta",
+    "auth/invalid-credential": "Correo o contrasena incorrectos",
+    "auth/invalid-email": "El formato del correo electronico no es valido",
+    "auth/user-disabled": "Esta cuenta ha sido deshabilitada",
+    "auth/too-many-requests": "Demasiados intentos fallidos. Intenta de nuevo mas tarde",
+    "auth/email-already-in-use": "Ya existe una cuenta registrada con este correo electronico",
+    "auth/weak-password": "La contrasena debe tener al menos 6 caracteres",
   };
 
   return messages[code] || "No fue posible completar la operacion";
@@ -417,41 +429,107 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [ensureBackendGoogleSession, ensureGoogleSession, router, syncProfile]);
 
-  const login = useCallback(async () => {
-    await loginWithGoogle();
-  }, [loginWithGoogle]);
+  const loginWithEmail = useCallback(async (email: string, password: string) => {
+    if (!auth) {
+      throw new Error("Firebase Auth no esta disponible en este entorno");
+    }
+
+    setLoading(true);
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const token = await credential.user.getIdToken(true);
+      setFirebaseUser(credential.user);
+      setIdToken(token);
+      setApiAccessToken(token, true);
+
+      await ensureBackendGoogleSession(token);
+
+      const profile = await syncProfile(true);
+      router.push(`/dashboard/${profile.role_name}`);
+    } catch (error) {
+      // Usuario autenticado en Firebase pero sin registro en la DB → completar registro
+      if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+        clearLocalSession();
+        router.replace("/register");
+        return;
+      }
+      throw new Error(mapFirebaseError(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [clearLocalSession, ensureBackendGoogleSession, router, syncProfile]);
+
+  const login = useCallback(async (email?: string, password?: string) => {
+    if (email && password) {
+      await loginWithEmail(email, password);
+    } else {
+      await loginWithGoogle();
+    }
+  }, [loginWithEmail, loginWithGoogle]);
 
   const register = useCallback(
     async (payload: RegisterInput) => {
+      if (!auth) {
+        throw new Error("Firebase Auth no esta disponible en este entorno");
+      }
+
+      const { email, password } = payload;
+
+      if (!email || !password) {
+        throw new Error("El correo y la contrasena son obligatorios para registrarse");
+      }
+
       setLoading(true);
+      let createdFirebaseAccount = false;
 
       try {
-        const currentGoogleUser = await ensureGoogleSession(true);
-
-        if (!currentGoogleUser) {
-          return;
+        // 1. Crear cuenta en Firebase o usar la existente
+        let firebaseUser: FirebaseUser;
+        try {
+          const credential = await createUserWithEmailAndPassword(auth, email, password);
+          firebaseUser = credential.user;
+          createdFirebaseAccount = true;
+        } catch (firebaseError) {
+          const code = (firebaseError as { code?: string }).code;
+          if (code !== "auth/email-already-in-use") throw firebaseError;
+          // La cuenta de Firebase ya existe → iniciar sesión con las credenciales dadas
+          const credential = await signInWithEmailAndPassword(auth, email, password);
+          firebaseUser = credential.user;
         }
 
-        const effectiveEmail = payload.email || currentGoogleUser.email;
+        const token = await firebaseUser.getIdToken(true);
+        setFirebaseUser(firebaseUser);
+        setIdToken(token);
+        setApiAccessToken(token, true);
 
-        if (!effectiveEmail) {
-          throw new Error("No fue posible obtener el correo para registrar el usuario");
+        // 2. Crear registro en la DB (si ya existe, continuar de todas formas)
+        try {
+          await apiRegister(payload);
+        } catch (backendError) {
+          // Si el usuario ya existe en la DB redirigir al dashboard directamente
+          if (backendError instanceof ApiError && backendError.status === 400) {
+            const profile = await syncProfile(true);
+            router.push(`/dashboard/${profile.role_name}`);
+            return;
+          }
+          throw backendError;
         }
 
-        await apiRegister({
-          ...payload,
-          email: effectiveEmail,
-        });
-
+        // 3. Sincronizar perfil y redirigir
         const profile = await syncProfile(true);
         router.push(`/dashboard/${profile.role_name}`);
       } catch (error) {
+        // Si creamos la cuenta de Firebase y el backend falló, eliminarla para evitar huérfanas
+        if (createdFirebaseAccount && auth.currentUser) {
+          try { await auth.currentUser.delete(); } catch { /* best-effort */ }
+        }
+        clearLocalSession();
         throw new Error(mapFirebaseError(error));
       } finally {
         setLoading(false);
       }
     },
-    [ensureGoogleSession, router, syncProfile]
+    [clearLocalSession, router, syncProfile]
   );
 
   const logout = useCallback(async () => {
@@ -510,6 +588,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearGoogleCalendarAccess,
         login,
         loginWithGoogle,
+        loginWithEmail,
         register,
         logout,
         refreshToken,
