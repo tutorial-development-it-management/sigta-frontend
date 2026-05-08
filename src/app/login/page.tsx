@@ -85,6 +85,11 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 text-white">
+          <img
+            src="/logoUptc.svg"
+            alt="Logo UPTC"
+            className="w-[280px] opacity-95 mb-8"
+          />
           <div className="inline-flex items-center gap-2 rounded-[20px] border border-[rgba(255,193,0,0.25)] bg-[rgba(255,193,0,0.12)] px-3 py-[5px]">
             <span className="h-[6px] w-[6px] rounded-full bg-[#FFC100]" />
             <span className="text-[11px] font-bold tracking-[0.5px] uppercase text-[#FFC100]">PLATAFORMA ACADÉMICA</span>
