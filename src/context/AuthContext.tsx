@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   User,
   RoleName,
@@ -208,6 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [calendarTokenState, setCalendarTokenState] = useState<CalendarTokenState | null>(() => readCalendarTokenState());
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const loginFlowActiveRef = useRef(false);
   const hasCalendarAccess = isCalendarTokenValid(calendarTokenState);
   const calendarAccessToken = hasCalendarAccess ? calendarTokenState?.accessToken ?? null : null;
 
@@ -293,9 +294,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     provider.setCustomParameters({ prompt: "select_account" });
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
       setGoogleAuthIntent(false);
-      return null;
+      return result.user;
     } catch (error) {
       const code = typeof error === "object" && error !== null && "code" in error
         ? String((error as { code?: string }).code)
@@ -375,6 +376,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Si un flujo de login interactivo (loginWithGoogle / loginWithEmail / register)
+      // ya está manejando el sync con el backend, no procesamos aquí para evitar
+      // doble llamada y el forceRelogin() silencioso ante errores de servidor.
+      if (loginFlowActiveRef.current) return;
+
       setLoading(true);
       try {
         const token = await nextFirebaseUser.getIdToken(true);
@@ -405,6 +411,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [clearLocalSession, ensureBackendGoogleSession, handleProfileSyncFailure, syncProfile]);
 
   const loginWithGoogle = useCallback(async () => {
+    loginFlowActiveRef.current = true;
     setLoading(true);
 
     try {
@@ -423,17 +430,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await syncProfile(true);
       router.push(`/dashboard/${profile.role_name}`);
     } catch (error) {
+      // Usuario autenticado en Firebase pero sin registro en la DB → completar registro
+      if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+        clearLocalSession();
+        router.replace("/register");
+        return;
+      }
       throw new Error(mapFirebaseError(error));
     } finally {
+      loginFlowActiveRef.current = false;
       setLoading(false);
     }
-  }, [ensureBackendGoogleSession, ensureGoogleSession, router, syncProfile]);
+  }, [clearLocalSession, ensureBackendGoogleSession, ensureGoogleSession, router, syncProfile]);
 
   const loginWithEmail = useCallback(async (email: string, password: string) => {
     if (!auth) {
       throw new Error("Firebase Auth no esta disponible en este entorno");
     }
 
+    loginFlowActiveRef.current = true;
     setLoading(true);
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
@@ -455,6 +470,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       throw new Error(mapFirebaseError(error));
     } finally {
+      loginFlowActiveRef.current = false;
       setLoading(false);
     }
   }, [clearLocalSession, ensureBackendGoogleSession, router, syncProfile]);
@@ -479,6 +495,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("El correo y la contrasena son obligatorios para registrarse");
       }
 
+      loginFlowActiveRef.current = true;
       setLoading(true);
       let createdFirebaseAccount = false;
 
@@ -526,6 +543,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearLocalSession();
         throw new Error(mapFirebaseError(error));
       } finally {
+        loginFlowActiveRef.current = false;
         setLoading(false);
       }
     },
