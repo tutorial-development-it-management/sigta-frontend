@@ -120,7 +120,7 @@ export default function MetricsDashboard() {
   filterRef.current = { filterTutor, filterSubject, filterFrom, filterTo };
 
   const programas = useMemo(
-    () => [...new Set(subjects.map((s) => s.program).filter(Boolean))] as string[],
+    () => Array.from(new Set(subjects.map((s) => s.program).filter(Boolean))) as string[],
     [subjects],
   );
 
