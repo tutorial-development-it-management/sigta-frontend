@@ -84,7 +84,11 @@ function isNonBlockingBackendLoginError(error: unknown): boolean {
     return false;
   }
 
-  return [400, 404, 405, 415, 422].includes(error.status);
+  // 400/415/422: login endpoint doesn't accept the Google token format (expected)
+  // 404/405: endpoint not found or method not allowed (older backend versions)
+  // 500: backend error on the email+password login endpoint — non-fatal for Google auth
+  //      since the token is validated separately via /auth/me
+  return [400, 404, 405, 415, 422, 500].includes(error.status);
 }
 
 function setCookie(name: string, value: string, maxAgeSeconds: number) {
