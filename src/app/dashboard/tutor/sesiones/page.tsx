@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getSessions, completarSession, reprogramarSession, TutoringSession, getErrorMessage } from "@/lib/api";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Calendar, CheckCircle, Clock, BookOpen, ChevronDown, ChevronUp, X, RefreshCw } from "lucide-react";
+import { Calendar, CheckCircle, Clock, BookOpen, ChevronDown, ChevronUp, X, RefreshCw, Star } from "lucide-react";
 import { cn } from "@/components/ui/Button";
 
 type Tab = "programada" | "realizada";
@@ -344,6 +344,12 @@ export default function TutorSesionesPage() {
   const filtered = sessions.filter((s) => matches(s, tab));
   const count = (t: Tab) => sessions.filter((s) => matches(s, t)).length;
 
+  const sesionesConEval = sessions.filter((s) => s.retroalimentaciones.length > 0);
+  const avgRating = sesionesConEval.length > 0
+    ? sesionesConEval.reduce((acc, s) => acc + s.retroalimentaciones[0].calificacion, 0) / sesionesConEval.length
+    : null;
+  const avgRatingStr = avgRating != null ? `${Math.round(avgRating * 10) / 10}/5` : "—";
+
   return (
     <div className="space-y-5">
       <div>
@@ -351,21 +357,30 @@ export default function TutorSesionesPage() {
         <p className="mt-1 text-sm text-gray-500">Gestiona y registra tus sesiones de tutoría.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-[10px]">
+      <div className="grid grid-cols-3 gap-[10px]">
         {[
-          { key: "programada" as Tab, label: "Programadas",  color: "bg-[#FFF3CC] text-[#B8860B]", icon: Clock },
-          { key: "realizada"  as Tab, label: "Realizadas",   color: "bg-[#E6F4EA] text-[#1E7E34]", icon: CheckCircle },
-        ].map(({ key, label, color, icon: Icon }) => (
+          { key: "programada" as Tab, label: "Programadas", color: "bg-[#FFF3CC] text-[#B8860B]", icon: Clock,       value: String(count("programada")) },
+          { key: "realizada"  as Tab, label: "Realizadas",  color: "bg-[#E6F4EA] text-[#1E7E34]", icon: CheckCircle, value: String(count("realizada")) },
+        ].map(({ key, label, color, icon: Icon, value }) => (
           <div key={key} className="bg-white border border-[#E5E7EB] rounded-[10px] p-3 flex items-center gap-3">
             <div className={cn("h-8 w-8 rounded-[8px] flex items-center justify-center", color)}>
               <Icon className="h-4 w-4" />
             </div>
             <div>
               <p className="text-[11px] text-gray-400">{label}</p>
-              <p className="text-lg font-bold text-[#0F2547]">{count(key)}</p>
+              <p className="text-lg font-bold text-[#0F2547]">{value}</p>
             </div>
           </div>
         ))}
+        <div className="bg-white border border-[#E5E7EB] rounded-[10px] p-3 flex items-center gap-3">
+          <div className={cn("h-8 w-8 rounded-[8px] flex items-center justify-center", sesionesConEval.length > 0 ? "bg-[#FFF3CC] text-[#B8860B]" : "bg-gray-100 text-gray-400")}>
+            <Star className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400">Promedio evaluación</p>
+            <p className="text-lg font-bold text-[#0F2547]">{avgRatingStr}</p>
+          </div>
+        </div>
       </div>
 
       <div className="flex gap-1">
