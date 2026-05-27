@@ -1013,6 +1013,152 @@ export async function getTutorRating(): Promise<number | null> {
   const data = unwrapData<{ promedio: number | null }>(response);
   return data?.promedio ?? null;
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+// ─── Admin reports ───────────────────────────────────────────────────────────
+
+export interface CancelacionRow {
+  id: string;
+  fecha_hora_inicio: string;
+  fecha_hora_fin: string;
+  modalidad: string;
+  tutor: { id: string; nombre: string; correo: string };
+  estudiante: { id: string; nombre: string; correo: string };
+  materia: { id: number; codigo: string; nombre: string };
+}
+
+export interface RendimientoTutor {
+  id: string;
+  nombre: string;
+  correo: string;
+  sesiones_totales: number;
+  realizadas: number;
+  canceladas: number;
+  programadas: number;
+  tasa_cancelacion: number;
+  tasa_realizacion: number;
+  total_evaluaciones: number;
+  cinco_estrellas: number;
+  porcentaje_cinco_estrellas: number;
+  promedio_calificacion: number | null;
+}
+
+export interface RendimientoEstudiante {
+  id: string;
+  nombre: string;
+  correo: string;
+  sesiones_totales: number;
+  realizadas: number;
+  canceladas: number;
+  programadas: number;
+  tasa_cancelacion: number;
+  tasa_asistencia: number;
+}
+
+export interface RendimientoReport {
+  desde: string | null;
+  hasta: string | null;
+  resumen: {
+    total_sesiones: number;
+    realizadas: number;
+    canceladas: number;
+    programadas: number;
+  };
+  cancelaciones: CancelacionRow[];
+  rendimiento_tutores: RendimientoTutor[];
+  rendimiento_estudiantes: RendimientoEstudiante[];
+}
+
+export type ReporteCsvTipo = 'cancelaciones' | 'tutores' | 'estudiantes';
+
+interface ReporteRangoParams {
+  desde?: string;
+  hasta?: string;
+}
+
+const buildRendimientoPath = (params?: ReporteRangoParams) => {
+  const qs = new URLSearchParams();
+  if (params?.desde) qs.set('desde', params.desde);
+  if (params?.hasta) qs.set('hasta', params.hasta);
+  const query = qs.toString();
+  return `/admin/reportes/rendimiento${query ? `?${query}` : ''}`;
+};
+
+export async function getRendimientoReport(params?: ReporteRangoParams): Promise<RendimientoReport> {
+  const response = await apiRequest<unknown>(buildRendimientoPath(params), {
+    authRequired: true,
+    defaultErrorMessage: 'Error al obtener el reporte de rendimiento',
+  });
+  const data = unwrapData<RendimientoReport>(response);
+  if (!data) throw new ApiError('No se recibió el reporte de rendimiento', 500);
+  return data;
+}
+
+export interface DemoSeedResult {
+  tutores_creados: number;
+  estudiantes_creados: number;
+  sesiones_totales: number;
+  realizadas: number;
+  canceladas: number;
+  programadas: number;
+  evaluaciones_creadas: number;
+}
+
+export interface DemoClearResult {
+  usuarios_eliminados: number;
+}
+
+export async function seedReporteDemo(): Promise<DemoSeedResult> {
+  const response = await apiRequest<unknown>('/admin/demo/seed', {
+    method: 'POST',
+    authRequired: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+    defaultErrorMessage: 'Error al generar datos de demostración',
+  });
+  const data = unwrapData<DemoSeedResult>(response);
+  if (!data) throw new ApiError('No se recibió el resumen del seeder', 500);
+  return data;
+}
+
+export async function clearReporteDemo(): Promise<DemoClearResult> {
+  const response = await apiRequest<unknown>('/admin/demo', {
+    method: 'DELETE',
+    authRequired: true,
+    defaultErrorMessage: 'Error al limpiar datos de demostración',
+  });
+  const data = unwrapData<DemoClearResult>(response);
+  if (!data) throw new ApiError('No se recibió el resumen de limpieza', 500);
+  return data;
+}
+
+export async function downloadReporteExcel(
+  tipo: ReporteCsvTipo,
+  params?: ReporteRangoParams
+): Promise<{ blob: Blob; filename: string }> {
+  const idToken = await resolveAccessToken(false);
+  if (!idToken) {
+    throw new ApiError('Sesion expirada. Inicia sesion con Google nuevamente.', 401);
+  }
+
+  const qs = new URLSearchParams({ format: 'xlsx', tipo });
+  if (params?.desde) qs.set('desde', params.desde);
+  if (params?.hasta) qs.set('hasta', params.hasta);
+
+  const response = await fetch(`${API_BASE}/admin/reportes/rendimiento?${qs.toString()}`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
+
+  if (!response.ok) {
+    const payload = await parseJsonSafe(response);
+    throw toApiError(response.status, payload, 'Error al descargar el reporte');
+  }
+
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+  const filename = match?.[1] ?? `reporte-${tipo}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const blob = await response.blob();
+  return { blob, filename };
+}
 
 export async function assignTutorToRequest(requestId: string, tutorId: string): Promise<void> {
   await apiRequest<unknown>(`/tutorias/${requestId}/assign-tutor`, {
