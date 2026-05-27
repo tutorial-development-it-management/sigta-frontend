@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getSessions, completarSession, reprogramarSession, TutoringSession, getErrorMessage } from "@/lib/api";
+import { getCalendarAccessToken } from "@/lib/googleCalendar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Calendar, CheckCircle, Clock, BookOpen, ChevronDown, ChevronUp, X, RefreshCw } from "lucide-react";
 import { cn } from "@/components/ui/Button";
@@ -47,9 +48,16 @@ function ReprogramarModal({
     setLoading(true);
     setError(null);
     try {
+      let accessToken: string | undefined;
+      try {
+        accessToken = await getCalendarAccessToken();
+      } catch {
+        accessToken = undefined;
+      }
       await reprogramarSession(session.id, {
         fecha_hora_inicio: new Date(fechaInicio).toISOString(),
         fecha_hora_fin:    new Date(fechaFin).toISOString(),
+        accessToken,
       });
       onDone();
     } catch (err) {
@@ -101,6 +109,9 @@ function ReprogramarModal({
             />
           </div>
           {error && <p className="text-[12px] text-red-600 bg-red-50 rounded-[8px] px-3 py-2">{error}</p>}
+          <p className="text-[11px] text-gray-500 bg-[#F8FAFC] rounded-[8px] px-3 py-2">
+            Si autorizas Google Calendar, actualizaremos el evento existente y notificaremos al estudiante por correo.
+          </p>
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 py-[11px] rounded-[9px] border border-[#D1D5DB] text-[13px] font-semibold text-[#374151] hover:bg-gray-50">

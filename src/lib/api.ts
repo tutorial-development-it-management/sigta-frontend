@@ -800,14 +800,16 @@ export interface CompletarSessionInput {
 
 export async function reprogramarSession(
   id: string,
-  input: { fecha_hora_inicio: string; fecha_hora_fin: string }
+  input: { fecha_hora_inicio: string; fecha_hora_fin: string; accessToken?: string }
 ): Promise<TutoringSession> {
+  const { accessToken, ...rest } = input;
   const response = await apiRequest<unknown>(`/sesiones/${id}/reprogramar`, {
     method: "PATCH",
     authRequired: true,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify(accessToken ? { ...rest, accessToken } : rest),
     defaultErrorMessage: "Error al reprogramar la sesión",
+    skipGlobalUnauthorizedHandler: true,
   });
   const data = unwrapData<TutoringSession>(response);
   if (!data) throw new ApiError("No se recibió la sesión actualizada", 500);
