@@ -35,7 +35,9 @@ function formatTime(timeStr: string): string {
   if (!timeStr) return "";
   try {
     const d = timeStr.includes("T") ? new Date(timeStr) : new Date(`1970-01-01T${timeStr}`);
-    return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+    // hora_preferida se guarda como hora de pared en UTC → mostrarla en UTC para que
+    // coincida con la que eligió el estudiante, sin importar la zona del dispositivo.
+    return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   } catch { return ""; }
 }
 
@@ -57,7 +59,7 @@ function SolicitudCard({
   const isLoading   = loadingId === solicitud.id;
 
   const fecha = new Date(solicitud.preferred_date).toLocaleDateString("es-CO", {
-    weekday: "short", day: "numeric", month: "short", year: "numeric",
+    weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
   });
   const hora     = formatTime(solicitud.preferred_time);
   const iniciales = solicitud.student.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("");

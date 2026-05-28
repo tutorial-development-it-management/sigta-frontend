@@ -163,7 +163,7 @@ export default function MisTutoriasPage() {
           ) : (
             <div className="divide-y divide-[#F3F4F6]">
               {filtered.map((t) => {
-                const fecha = new Date(t.preferred_date).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+                const fecha = new Date(t.preferred_date).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
                 return (
                   <div key={t.id} className="py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">

@@ -78,7 +78,7 @@ export default function StudentDashboard() {
             <div className="divide-y divide-[#F3F4F6]">
               {proximas.map((t) => {
                 const fecha = new Date(t.preferred_date).toLocaleDateString("es-CO", {
-                  day: "2-digit", month: "short", year: "numeric",
+                  day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
                 });
                 return (
                   <div key={t.id} className="px-4 py-3 flex items-center justify-between">

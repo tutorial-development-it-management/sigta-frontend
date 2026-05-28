@@ -260,7 +260,7 @@ export default function CoordinatorDashboard() {
                   <div key={req.id} className="px-5 py-3 flex items-center gap-3 flex-wrap">
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-[#0F2547] truncate">{req.student.full_name}</p>
-                      <p className="text-[11px] text-gray-400">{req.subject.name} · {new Date(req.preferred_date).toLocaleDateString("es-CO")}</p>
+                      <p className="text-[11px] text-gray-400">{req.subject.name} · {new Date(req.preferred_date).toLocaleDateString("es-CO", { timeZone: "UTC" })}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <select

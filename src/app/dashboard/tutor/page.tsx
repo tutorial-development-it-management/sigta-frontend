@@ -85,7 +85,7 @@ export default function TutorDashboard() {
             <div className="divide-y divide-[#F3F4F6]">
               {recientes.map((r) => {
                 const fecha = new Date(r.preferred_date).toLocaleDateString("es-CO", {
-                  day: "2-digit", month: "short", year: "numeric",
+                  day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
                 });
                 return (
                   <div key={r.id} className="px-4 py-3 flex items-center justify-between gap-3">
