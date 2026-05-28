@@ -8,6 +8,8 @@ import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/components/ui/Button";
 import Link from "next/link";
 import { getRequests, cancelRequest, TutoringRequest, getErrorMessage } from "@/lib/api";
+import { estadoBadge } from "@/lib/estados";
+import { formatPreferidaFecha } from "@/lib/format";
 
 type TabKey = "todas" | "pendiente" | "aceptada" | "realizada" | "cancelada";
 
@@ -18,22 +20,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "realizada", label: "Realizadas" },
   { key: "cancelada", label: "Canceladas" },
 ];
-
-const STATUS_LABEL: Record<string, string> = {
-  pendiente:  "Pendiente",
-  aceptada:   "Confirmada",
-  realizada:  "Realizada",
-  cancelada:  "Cancelada",
-  rechazada:  "Rechazada",
-};
-
-const STATUS_STYLE: Record<string, string> = {
-  pendiente:  "bg-yellow-100 text-yellow-800",
-  aceptada:   "bg-blue-100 text-blue-800",
-  realizada:  "bg-green-100 text-green-800",
-  cancelada:  "bg-red-100 text-red-700",
-  rechazada:  "bg-orange-100 text-orange-700",
-};
 
 export default function MisTutoriasPage() {
   const { user } = useAuth();
@@ -163,7 +149,7 @@ export default function MisTutoriasPage() {
           ) : (
             <div className="divide-y divide-[#F3F4F6]">
               {filtered.map((t) => {
-                const fecha = new Date(t.preferred_date).toLocaleDateString("es-CO", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+                const fecha = formatPreferidaFecha(t.preferred_date);
                 return (
                   <div key={t.id} className="py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -174,8 +160,8 @@ export default function MisTutoriasPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={cn("text-xs px-2 py-1 rounded-full font-medium", STATUS_STYLE[t.status] ?? "bg-gray-100 text-gray-600")}>
-                        {STATUS_LABEL[t.status] ?? t.status}
+                      <span className={cn("text-xs px-2 py-1 rounded-full font-medium", estadoBadge(t.status).className)}>
+                        {estadoBadge(t.status).label}
                       </span>
                       {t.status === "pendiente" && (
                         <button

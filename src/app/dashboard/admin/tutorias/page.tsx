@@ -14,35 +14,26 @@ import {
   BookOpen,
   User,
 } from "lucide-react";
+import { estadoBadge, ESTADO_LABEL } from "@/lib/estados";
+import { formatSesion } from "@/lib/format";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const estadoConfig: Record<string, { label: string; className: string }> = {
-  programada:  { label: "Programada",  className: "bg-[#E8F0FE] text-[#1A5EB8]" },
-  completada:  { label: "Completada",  className: "bg-[#E6F4EA] text-[#1E7E34]" },
-  cancelada:   { label: "Cancelada",   className: "bg-red-50 text-red-600" },
-  pendiente:   { label: "Pendiente",   className: "bg-[#FFF3CC] text-[#B8860B]" },
-  rechazada:   { label: "Rechazada",   className: "bg-orange-50 text-orange-700" },
-};
-
 function formatDatetime(iso: string) {
-  try {
-    return new Date(iso).toLocaleString("es-CO", {
-      day: "numeric", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
+  return formatSesion(iso, {
+    day: "numeric", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
-const ESTADOS = ["", "programada", "completada", "cancelada", "pendiente", "rechazada"] as const;
+// Estados reales de una sesión (coinciden con el enum del backend).
+const ESTADOS = ["", "agendada", "programada", "realizada", "cancelada"] as const;
 
 // ─── Row ─────────────────────────────────────────────────────────────────────
 
 function SessionRow({ session }: { session: TutoringSession }) {
   const [expanded, setExpanded] = useState(false);
-  const cfg = estadoConfig[session.estado] ?? { label: session.estado, className: "bg-gray-100 text-gray-600" };
+  const cfg = estadoBadge(session.estado);
 
   return (
     <>
@@ -207,7 +198,7 @@ export default function AdminTutoriasPage() {
           >
             <option value="">Todos los estados</option>
             {ESTADOS.filter(Boolean).map((e) => (
-              <option key={e} value={e}>{estadoConfig[e]?.label ?? e}</option>
+              <option key={e} value={e}>{ESTADO_LABEL[e] ?? e}</option>
             ))}
           </select>
         </div>

@@ -7,6 +7,7 @@ import { Calendar, CheckCircle, Clock, Plus } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { getRequests, TutoringRequest } from "@/lib/api";
+import { formatPreferidaFecha } from "@/lib/format";
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -77,9 +78,7 @@ export default function StudentDashboard() {
           ) : (
             <div className="divide-y divide-[#F3F4F6]">
               {proximas.map((t) => {
-                const fecha = new Date(t.preferred_date).toLocaleDateString("es-CO", {
-                  day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
-                });
+                const fecha = formatPreferidaFecha(t.preferred_date);
                 return (
                   <div key={t.id} className="px-4 py-3 flex items-center justify-between">
                     <div>

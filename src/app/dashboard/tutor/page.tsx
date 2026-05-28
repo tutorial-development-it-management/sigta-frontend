@@ -7,6 +7,8 @@ import { Inbox, CheckSquare, CalendarDays, Clock, CheckCircle, Star } from "luci
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { getRequests, getTutorRating, TutoringRequest } from "@/lib/api";
+import { estadoBadge } from "@/lib/estados";
+import { formatPreferidaFecha } from "@/lib/format";
 
 export default function TutorDashboard() {
   const { user } = useAuth();
@@ -39,12 +41,6 @@ export default function TutorDashboard() {
   const recientes = requests
     .filter((r) => r.status === "pendiente")
     .slice(0, 4);
-
-  const STATUS_STYLE: Record<string, string> = {
-    pendiente: "bg-yellow-100 text-yellow-800",
-    aceptada:  "bg-blue-100 text-blue-800",
-    cancelada: "bg-red-100 text-red-700",
-  };
 
   return (
     <div className="space-y-4">
@@ -84,9 +80,7 @@ export default function TutorDashboard() {
           ) : (
             <div className="divide-y divide-[#F3F4F6]">
               {recientes.map((r) => {
-                const fecha = new Date(r.preferred_date).toLocaleDateString("es-CO", {
-                  day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
-                });
+                const fecha = formatPreferidaFecha(r.preferred_date);
                 return (
                   <div key={r.id} className="px-4 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -94,8 +88,8 @@ export default function TutorDashboard() {
                       <p className="text-[12px] text-gray-500 truncate">{r.subject.name} · {fecha}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[r.status] ?? "bg-gray-100 text-gray-600"}`}>
-                        Pendiente
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${estadoBadge(r.status).className}`}>
+                        {estadoBadge(r.status).label}
                       </span>
                       <Link
                         href="/dashboard/tutor/solicitudes"

@@ -13,6 +13,8 @@ import {
   getErrorMessage,
   isGoogleCalendarAuthError,
 } from "@/lib/api";
+import { estadoBadge } from "@/lib/estados";
+import { formatPreferidaFecha, formatPreferidaHora } from "@/lib/format";
 
 type TabKey = "todas" | "pendiente" | "aceptada" | "cancelada";
 
@@ -22,24 +24,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "aceptada",  label: "Aceptadas" },
   { key: "cancelada", label: "Canceladas" },
 ];
-
-const estadoConfig: Record<string, { label: string; className: string }> = {
-  pendiente:  { label: "Pendiente",  className: "bg-[#FFF3CC] text-[#B8860B]" },
-  aceptada:   { label: "Aceptada",   className: "bg-[#E6F4EA] text-[#1E7E34]" },
-  cancelada:  { label: "Cancelada",  className: "bg-red-50 text-red-600" },
-  rechazada:  { label: "Rechazada",  className: "bg-orange-50 text-orange-700" },
-  realizada:  { label: "Realizada",  className: "bg-gray-100 text-gray-600" },
-};
-
-function formatTime(timeStr: string): string {
-  if (!timeStr) return "";
-  try {
-    const d = timeStr.includes("T") ? new Date(timeStr) : new Date(`1970-01-01T${timeStr}`);
-    // hora_preferida se guarda como hora de pared en UTC → mostrarla en UTC para que
-    // coincida con la que eligió el estudiante, sin importar la zona del dispositivo.
-    return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-  } catch { return ""; }
-}
 
 // ── Card ───────────────────────────────────────────────────────────────────────
 
@@ -58,12 +42,12 @@ function SolicitudCard({
   const isPendiente = solicitud.status === "pendiente";
   const isLoading   = loadingId === solicitud.id;
 
-  const fecha = new Date(solicitud.preferred_date).toLocaleDateString("es-CO", {
-    weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
+  const fecha = formatPreferidaFecha(solicitud.preferred_date, {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
   });
-  const hora     = formatTime(solicitud.preferred_time);
+  const hora     = formatPreferidaHora(solicitud.preferred_time);
   const iniciales = solicitud.student.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("");
-  const cfg       = estadoConfig[solicitud.status] ?? { label: solicitud.status, className: "bg-gray-100 text-gray-600" };
+  const cfg       = estadoBadge(solicitud.status);
 
   return (
     <div className={cn(

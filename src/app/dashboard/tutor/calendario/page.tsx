@@ -7,25 +7,13 @@ import { SigCalendar } from "@/components/ui/SigCalendar";
 import { StatCard } from "@/components/ui/StatCard";
 import { Calendar, CheckCircle, Clock, X, BookOpen, LayoutList } from "lucide-react";
 import { cn } from "@/components/ui/Button";
-
-const fmt = (d: string) =>
-  new Date(d).toLocaleString("es-CO", {
-    weekday: "long", day: "numeric", month: "long",
-    hour: "2-digit", minute: "2-digit",
-  });
+import { formatSesion } from "@/lib/format";
+import { estadoBadge } from "@/lib/estados";
 
 function SessionDetail({ session, onClose }: {
   session: TutoringSession; onClose: () => void;
 }) {
-  const estadoLabel: Record<string, string> = {
-    programada: "Programada", realizada: "Realizada", cancelada: "Cancelada", agendada: "Agendada",
-  };
-  const estadoColor: Record<string, string> = {
-    programada: "bg-[#FFF3CC] text-[#B8860B]",
-    agendada:   "bg-[#FFF3CC] text-[#B8860B]",
-    realizada:  "bg-[#E6F4EA] text-[#1E7E34]",
-    cancelada:  "bg-red-50 text-red-600",
-  };
+  const cfg = estadoBadge(session.estado);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -37,15 +25,15 @@ function SessionDetail({ session, onClose }: {
         <div className="p-6 space-y-4 text-[13px]">
           <div className="flex items-center justify-between">
             <p className="font-bold text-[#0F2547] text-[15px]">{session.materia.nombre}</p>
-            <span className={cn("px-2 py-1 rounded-full text-[11px] font-semibold", estadoColor[session.estado] ?? "bg-gray-100 text-gray-600")}>
-              {estadoLabel[session.estado] ?? session.estado}
+            <span className={cn("px-2 py-1 rounded-full text-[11px] font-semibold", cfg.className)}>
+              {cfg.label}
             </span>
           </div>
           <div className="space-y-1.5 text-gray-600">
             <p><span className="font-medium text-gray-800">Estudiante:</span> {session.estudiante.full_name}</p>
             <p><span className="font-medium text-gray-800">Correo:</span> {session.estudiante.email}</p>
-            <p><span className="font-medium text-gray-800">Inicio:</span> {fmt(session.fecha_hora_inicio)}</p>
-            <p><span className="font-medium text-gray-800">Fin:</span> {fmt(session.fecha_hora_fin)}</p>
+            <p><span className="font-medium text-gray-800">Inicio:</span> {formatSesion(session.fecha_hora_inicio)}</p>
+            <p><span className="font-medium text-gray-800">Fin:</span> {formatSesion(session.fecha_hora_fin)}</p>
             <p className="capitalize"><span className="font-medium text-gray-800">Modalidad:</span> {session.modalidad}</p>
             {session.lugar_o_enlace && (
               <p><span className="font-medium text-gray-800">Lugar / Enlace:</span> {session.lugar_o_enlace}</p>
@@ -135,15 +123,10 @@ export default function TutorCalendarioPage() {
             <div key={s.id} className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-[#FFC100]/50" onClick={() => setDetail(s)}>
               <div>
                 <p className="text-[13px] font-semibold text-[#0F2547]">{s.materia.nombre}</p>
-                <p className="text-[12px] text-gray-500">{s.estudiante.full_name} · {new Date(s.fecha_hora_inicio).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}</p>
+                <p className="text-[12px] text-gray-500">{s.estudiante.full_name} · {formatSesion(s.fecha_hora_inicio, { day: "numeric", month: "short", year: "numeric" })}</p>
               </div>
-              <span className={cn("text-[11px] px-2 py-1 rounded-full font-medium", {
-                programada: "bg-[#FFF3CC] text-[#B8860B]",
-                agendada:   "bg-[#FFF3CC] text-[#B8860B]",
-                realizada:  "bg-[#E6F4EA] text-[#1E7E34]",
-                cancelada:  "bg-red-50 text-red-600",
-              }[s.estado] ?? "bg-gray-100 text-gray-600")}>
-                {s.estado}
+              <span className={cn("text-[11px] px-2 py-1 rounded-full font-medium", estadoBadge(s.estado).className)}>
+                {estadoBadge(s.estado).label}
               </span>
             </div>
           ))}

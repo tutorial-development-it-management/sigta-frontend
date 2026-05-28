@@ -12,12 +12,8 @@ import { SigCalendar } from "@/components/ui/SigCalendar";
 import { StatCard } from "@/components/ui/StatCard";
 import { Calendar, CheckCircle, Clock, Star, X, BookOpen, LayoutList } from "lucide-react";
 import { cn } from "@/components/ui/Button";
-
-const fmt = (d: string) =>
-  new Date(d).toLocaleString("es-CO", {
-    weekday: "long", day: "numeric", month: "long",
-    hour: "2-digit", minute: "2-digit",
-  });
+import { formatSesion } from "@/lib/format";
+import { estadoBadge } from "@/lib/estados";
 
 // ─── Modal evaluación ─────────────────────────────────────────────────────────
 function FeedbackModal({ session, onClose, onDone }: {
@@ -96,12 +92,7 @@ function SessionDetail({ session, onClose, onEvaluar }: {
   session: TutoringSession; onClose: () => void; onEvaluar: (s: TutoringSession) => void;
 }) {
   const yaEvaluo = session.retroalimentaciones.length > 0;
-  const estadoLabel: Record<string, string> = { programada: "Programada", realizada: "Realizada", cancelada: "Cancelada" };
-  const estadoColor: Record<string, string> = {
-    programada: "bg-[#FFF3CC] text-[#B8860B]",
-    realizada:  "bg-[#E6F4EA] text-[#1E7E34]",
-    cancelada:  "bg-red-50 text-red-600",
-  };
+  const cfg = estadoBadge(session.estado);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -113,14 +104,14 @@ function SessionDetail({ session, onClose, onEvaluar }: {
         <div className="p-6 space-y-4 text-[13px]">
           <div className="flex items-center justify-between">
             <p className="font-bold text-[#0F2547] text-[15px]">{session.materia.nombre}</p>
-            <span className={cn("px-2 py-1 rounded-full text-[11px] font-semibold", estadoColor[session.estado])}>
-              {estadoLabel[session.estado]}
+            <span className={cn("px-2 py-1 rounded-full text-[11px] font-semibold", cfg.className)}>
+              {cfg.label}
             </span>
           </div>
           <div className="space-y-1.5 text-gray-600">
             <p><span className="font-medium text-gray-800">Tutor:</span> {session.tutor.full_name}</p>
-            <p><span className="font-medium text-gray-800">Inicio:</span> {fmt(session.fecha_hora_inicio)}</p>
-            <p><span className="font-medium text-gray-800">Fin:</span> {fmt(session.fecha_hora_fin)}</p>
+            <p><span className="font-medium text-gray-800">Inicio:</span> {formatSesion(session.fecha_hora_inicio)}</p>
+            <p><span className="font-medium text-gray-800">Fin:</span> {formatSesion(session.fecha_hora_fin)}</p>
             <p className="capitalize"><span className="font-medium text-gray-800">Modalidad:</span> {session.modalidad}</p>
           </div>
           {session.bitacoras.length > 0 && (
@@ -224,15 +215,11 @@ export default function StudentSesionesPage() {
               <div key={s.id} className="bg-white border border-[#E5E7EB] rounded-[10px] p-4 flex items-center justify-between gap-3 cursor-pointer hover:border-[#FFC100]/50" onClick={() => setDetail(s)}>
                 <div>
                   <p className="text-[13px] font-semibold text-[#0F2547]">{s.materia.nombre}</p>
-                  <p className="text-[12px] text-gray-500">{s.tutor.full_name} · {new Date(s.fecha_hora_inicio).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  <p className="text-[12px] text-gray-500">{s.tutor.full_name} · {formatSesion(s.fecha_hora_inicio, { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={cn("text-[11px] px-2 py-1 rounded-full font-medium", {
-                    programada: "bg-[#FFF3CC] text-[#B8860B]",
-                    realizada:  "bg-[#E6F4EA] text-[#1E7E34]",
-                    cancelada:  "bg-red-50 text-red-600",
-                  }[s.estado] ?? "bg-gray-100 text-gray-600")}>
-                    {s.estado}
+                  <span className={cn("text-[11px] px-2 py-1 rounded-full font-medium", estadoBadge(s.estado).className)}>
+                    {estadoBadge(s.estado).label}
                   </span>
                   {s.estado === "realizada" && !yaEvaluo && (
                     <button onClick={(e) => { e.stopPropagation(); setEvaluating(s); }}

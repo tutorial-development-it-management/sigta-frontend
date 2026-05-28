@@ -7,6 +7,7 @@ import { getCalendarAccessToken } from "@/lib/googleCalendar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Calendar, CheckCircle, Clock, BookOpen, ChevronDown, ChevronUp, X, RefreshCw } from "lucide-react";
 import { cn } from "@/components/ui/Button";
+import { formatSesion } from "@/lib/format";
 
 type Tab = "programada" | "realizada";
 
@@ -16,7 +17,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 const fmt = (d: string) =>
-  new Date(d).toLocaleString("es-CO", {
+  formatSesion(d, {
     weekday: "short", day: "numeric", month: "short",
     hour: "2-digit", minute: "2-digit",
   });

@@ -7,12 +7,7 @@ import listPlugin      from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import { useMemo } from "react";
 import { TutoringSession } from "@/lib/api";
-
-const STATUS_COLOR: Record<string, string> = {
-  programada: "#1A5EB8",
-  realizada:  "#1E7E34",
-  cancelada:  "#B91C1C",
-};
+import { ESTADO_COLOR_HEX } from "@/lib/estados";
 
 interface Props {
   sessions: TutoringSession[];
@@ -31,8 +26,8 @@ export function SigCalendar({ sessions, role, onEventClick }: Props) {
             : `${s.materia.nombre} (${s.tutor.full_name})`,
         start:           s.fecha_hora_inicio,
         end:             s.fecha_hora_fin,
-        backgroundColor: STATUS_COLOR[s.estado] ?? "#6B7280",
-        borderColor:     STATUS_COLOR[s.estado] ?? "#6B7280",
+        backgroundColor: ESTADO_COLOR_HEX[s.estado] ?? "#6B7280",
+        borderColor:     ESTADO_COLOR_HEX[s.estado] ?? "#6B7280",
         extendedProps:   { session: s },
       })),
     [sessions, role]
